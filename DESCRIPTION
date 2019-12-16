@@ -1,0 +1,43 @@
+Package: sykdomspulsen
+Title: NIPH infectious disease surveillance system
+Version: 2019.8.8
+Authors@R: c(
+  person("Richard", "White", email = "w@rwhite.no", role = c("aut", "cre")),
+  person("Gunnar", "R\u00F8", email = "GunnarOyvindIsaksson.Ro@fhi.no", role = c("aut")), 
+  person("B", "V", email = "beva@fhi.no", role = c("aut"))
+  )
+Description: NIPH infectious disease surveillance system
+URL: https://folkehelseinstituttet.github.io/sykdomspulsen/
+BugReports: https://github.com/folkehelseinstituttet/fhi/sykdomspuslen/issues
+Depends:
+  R (>= 3.5.0)
+Imports:
+  ggplot2,
+  grid,
+  maptools,
+  rmarkdown,
+  stringr,
+  readxl,
+  gmailr,
+  broom,
+  magrittr,
+  lubridate,
+  data.table,
+  scales,
+  tinytex,
+  uuid,
+  processx,
+  devtools,
+  zoo,
+  utils,
+  fhidata,
+  fs,
+  glue
+Suggests: testthat,
+    knitr,
+    usethis
+License: GPL-3
+LazyData: true
+RoxygenNote: 6.1.1
+VignetteBuilder: knitr
+Encoding: UTF-8
