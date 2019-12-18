@@ -4,7 +4,7 @@
 \alias{analyse_simple}
 \title{analyse_simple}
 \usage{
-analyse_simple(data, group_by = "month")
+analyse_simple(data, group_by = "month", past_years = 5)
 }
 \description{
 Get and clean MSIS data from msis.no

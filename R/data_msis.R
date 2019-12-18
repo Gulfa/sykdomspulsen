@@ -97,7 +97,7 @@ get_data <- function(x_year, x_county, x_municip){
              "__EVENTVALIDATION"=intermediate_data[["__EVENTVALIDATION"]]$value
              )
           )
-    a <- readHTMLTable(content(r, "text"))$m_ucReportGrid_m_ctrlRapportGrid
+    a <- XML::readHTMLTable(content(r, "text"))$m_ucReportGrid_m_ctrlRapportGrid
     data <- tidyr::gather(a, "month", "n", -Sykdom)
     setDT(data)
     data[, year:=x_year]
@@ -137,45 +137,54 @@ clean_data <- function(data){
 #' @import rvest
 #'
 #' @export
-get_MSIS_data <- function(start_year=2006,end_year=year(Sys.Date)){
-  municips <- get_county_municip()[1:10]
-  data_list <- list()
-  i = 1
-  for(m in municips){
-    for(year in start_year:end_year){
-      new_data <- get_data(year, as.integer(m["county_code"]), as.integer(m["municip_code"]))
+get_MSIS_data <- R6::R6Class(
+  "get_MSIS_data",
+  inherit = TaskBase,
+  portable = FALSE,
+  cloneable = FALSE,
+  list(
+    run = function(start_year=2006,end_year=year(Sys.Date)){
+      municips <- get_county_municip()[1:10]
+      data_list <- list()
+      i = 1
+      for(m in municips){
+        for(year in start_year:end_year){
+          new_data <- get_data(year, as.integer(m["county_code"]), as.integer(m["municip_code"]))
       new_data[,county:=m["county"]]
-      new_data[,municip:=m["municip"]]
-      data_list[[i]] <- new_data
-      i = i +1
+          new_data[,municip:=m["municip"]]
+          data_list[[i]] <- new_data
+          i = i +1
+        }
+      }
+      data <- rbindlist(data_list)
+      cleaned_data <- clean_data(data)
+      with_loc <- cleaned_data[fd::norway_locations()[, .(location_code=municip_code, municip_name)], on=c("municip"="municip_name")]
+      with_loc[, tag_outcome :=Sykdom]
+      with_loc <- with_loc[!is.na(tag_outcome),]
+      with_loc[, granularity_time:="month"]
+      with_loc[, granularity_geo:="municip"]
+      with_loc[, border:=fd::config$border]
+      with_loc[, age:="Totalt"]
+      with_loc[, sex:="Totalt"]
+      with_loc[, year:=lubridate::year(date)]
+      msis_data_schema$db_connect(get_config()[["db_config"]])
+      out_data <- with_loc[, .(tag_outcome,
+                               location_code,
+                               granularity_time,
+                               granularity_geo,
+                               border,
+                               month,
+                               year,
+                               age,
+                               sex,
+                               date,
+                               n)]
+      msis_data_schema$db_drop_all_rows()
+      msis_data_schema$db_load_data_infile(out_data)
     }
-  }
-  data <- rbindlist(data_list)
-  cleaned_data <- clean_data(data)
-  with_loc <- cleaned_data[fd::norway_locations()[, .(location_code=municip_code, municip_name)], on=c("municip"="municip_name")]
-  with_loc[, tag_outcome :=Sykdom]
-  with_loc <- with_loc[!is.na(tag_outcome),]
-  with_loc[, granularity_time:="month"]
-  with_loc[, granularity_geo:="municip"]
-  with_loc[, border:=fd::config$border]
-  with_loc[, age:="Totalt"]
-  with_loc[, sex:="Totalt"]
-  with_loc[, year:=year(date)]
-  msis_data_schema$db_connect(get_config()[["db_config"]])
-  out_data <- with_loc[, .(tag_outcome,
-                           location_code,
-                           granularity_time,
-                           granularity_geo,
-                           border,
-                           age,
-                           sex,
-                           date,
-                           n)]
-  msis_data_schema$db_drop_all_rows()
-  msis_data_schema$db_load_data_infile(out_data)
-}
-
-
+  )
+)
+    
 msis_data_schema <- fd::schema$new(
     db_table = "data_msis",
     db_field_types =  c(

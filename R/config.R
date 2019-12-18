@@ -15,7 +15,28 @@ get_config <- function(){
           start_year = 2008,
           end_year=2019
         )
-      )
+      ),
+      msis_simple_analysis_kikhoste = list(
+        type="analysis",
+        db_table="data_msis",
+        func="analyse_simple",
+        dependencies=c("msis_data"),
+        filter = dplyr::quos(tag_outcome=="Kikhoste"),
+        args = list(
+          group_by="month",
+          past_years=5)
+      ),
+      ui_threshold_plot_kikhoste = list(
+        type="ui",
+        db_table="results_simple",
+        filter = dplyr::quos(tag_outcome=="Kikhoste" & year > 2010 & source == "data_msis"),
+        func="ui_create_threshold_plot",
+        dependencies=c("msis_simple_analysis_kikhoste"),
+        args=list(
+          filename="{location_code}.png",
+          folder =" kikhoste/{date}"
+          )
+        )
     ),
     db_config= list(
       driver = Sys.getenv("DB_DRIVER", "MySQL"),
