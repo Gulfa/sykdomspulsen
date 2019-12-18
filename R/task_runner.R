@@ -35,7 +35,7 @@ run_task <- function(task_name, log=TRUE){
     print(glue::glue("Running task {task_name}"))  
     if(task_config[["type"]] == "data" | task_config[["type"]] == "analysis_function"){
       func <- get(task_config$func)
-#      do.call(task$run, task_config[["args"]])
+      do.call(task$run, task_config[["args"]])
       
     }else{
       run_with_data(task_config[["db_table"]], task_config[["filter"]],
