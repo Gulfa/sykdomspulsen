@@ -35,7 +35,7 @@ run_task <- function(task_name, log=TRUE){
     print(glue::glue("Running task {task_name}"))  
     if(task_config[["type"]] == "data" | task_config[["type"]] == "analysis_function"){
       func <- get(task_config$func)
-      do.call(task$run, task_config[["args"]])
+#      do.call(task$run, task_config[["args"]])
       
     }else{
       run_with_data(task_config[["db_table"]], task_config[["filter"]],
@@ -44,11 +44,15 @@ run_task <- function(task_name, log=TRUE){
     
     if(log){
       fd::update_rundate(
-        package = task,
-        date_results = rundate[package == "sykdomspuls"]$date_results,
+        package = task_name,
+        date_results = lubridate::today(),
+        date_extraction = lubridate::today(),
         date_run = lubridate::today()
+
       )
     }
+  }else{
+    print(glue::glue("Not runng {task_name}"))
   }
 
 }
@@ -85,22 +89,25 @@ TaskBase <- R6::R6Class(
       rundates <- fd::get_rundate()
       last_run_date <- head(rundates[package == task]$date_run, 1)
       curr_date <- lubridate::today()
-      if(length(last_run_date)> 0){
-        if(curr_date < last_run_date){
-          return(FALSE)
-        }
-      }
-      
       dependencies <- c()
       for(dependency in get_list(config, "dependencies",default=c())){
         dep_run_date <- rundates[package==dependency]
         if(nrow(dep_run_date) == 0){
           return(FALSE)
         }
-        if(last_run_date >= dep_run_date$run_date){
-          return(FALSE)
+        if(length(last_run_date) >0){
+          if(last_run_date >= dep_run_date[1, date_run]){
+            return(FALSE)
+          }
         }
       }
+      if(length(last_run_date) == 0){
+        return(TRUE)
+      }
+      if(curr_date <= last_run_date){
+          return(FALSE)
+      }
+      
 
       return(TRUE)
     },

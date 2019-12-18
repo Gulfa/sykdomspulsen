@@ -26,6 +26,28 @@ get_config <- function(){
           group_by="month",
           past_years=5)
       ),
+      ui_threshold_plot_campy = list(
+        type="ui",
+        db_table="results_simple",
+        filter = dplyr::quos(tag_outcome=="Campylobacteriose" & year > 2010 & source == "data_msis"),
+        func="ui_create_threshold_plot",
+        dependencies=c("msis_simple_analysis_campy"),
+        args=list(
+          filename="{location_code}.png",
+          folder =" campy/{date}"
+          )
+      ),
+
+      msis_simple_analysis_campy = list(
+        type="analysis",
+        db_table="data_msis",
+        func="analyse_simple",
+        dependencies=c("msis_data"),
+        filter = dplyr::quos(tag_outcome=="Campylobacteriose"),
+        args = list(
+          group_by="month",
+          past_years=5)
+      ),
       ui_threshold_plot_kikhoste = list(
         type="ui",
         db_table="results_simple",
