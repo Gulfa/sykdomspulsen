@@ -3,9 +3,9 @@ get_county_municip <- function(){
   initial <- GET(handle=handle)
   initial_data <- html_form(content(initial))[[1]]$fields
   fylke <- 2996:3017
-  
+
   out <- list()
-  
+
   r<- POST(handle=handle,
            body=list(
              "__VIEWSTATE"=initial_data[["__VIEWSTATE"]]$value,
@@ -42,9 +42,9 @@ get_county_municip <- function(){
       out[[i]] <- list(municip=m_name[1], municip_code = municips[[m_name]],
                        county=name[1], county_code=code)
       i = i + 1
-      
+
     }
-    
+
   }
   return(out)
 }
@@ -56,7 +56,7 @@ get_data <- function(x_year, x_county, x_municip){
     initial <- GET(handle=handle)
     initial_data <- html_form(content(initial))[[1]]$fields
 
-    
+
     intermediate <- POST(handle=handle,
          body=list(
              "__VIEWSTATE"=initial_data[["__VIEWSTATE"]]$value,
@@ -69,7 +69,7 @@ get_data <- function(x_year, x_county, x_municip){
               "__LASTFOCUS"=""
              ))
     intermediate_data <- html_form(content(intermediate))[[1]]$fields
-    
+
     intermediate <- POST(handle=handle,
          body=list(
              "__VIEWSTATE"=intermediate_data[["__VIEWSTATE"]]$value,
@@ -84,7 +84,7 @@ get_data <- function(x_year, x_county, x_municip){
               "__LASTFOCUS"=""
              ))
     intermediate_data <- html_form(content(intermediate))[[1]]$fields
-    
+
     r <- POST(handle=handle,
          body=list(
              "__VIEWSTATE"=intermediate_data[["__VIEWSTATE"]]$value,
@@ -108,17 +108,17 @@ get_data <- function(x_year, x_county, x_municip){
 
 
 clean_data <- function(data){
-    months = c("Januar", 
+    months = c("Januar",
              "Februar",
              "Mars",
-             "April", 
+             "April",
              "Mai",
              "Juni",
-             "Juli", 
-             "August", 
-             "September", 
-             "Oktober", 
-             "November", 
+             "Juli",
+             "August",
+             "September",
+             "Oktober",
+             "November",
              "Desember")
 
     data[, n:=as.integer(n)]
@@ -130,20 +130,24 @@ clean_data <- function(data){
 
 #' get_MSIS_data
 #'
-#' Get and clean MSIS data from msis.no 
+#' Get and clean MSIS data from msis.no
 #'
 #' @import httr
 #' @import data.table
 #' @import rvest
 #'
 #' @export
-get_MSIS_data <- R6::R6Class(
-  "get_MSIS_data",
+r6_data_msis <- R6::R6Class(
+  "r6_data_msis",
   inherit = TaskBase,
   portable = FALSE,
   cloneable = FALSE,
   list(
-    run = function(start_year=2006,end_year=year(Sys.Date)){
+    run = function(){
+      # arguments
+      start_year <- tc(task_name)$args$start_year
+      end_year <- tc(task_name)$args$end_year
+
       municips <- get_county_municip()[1:10]
       data_list <- list()
       i = 1
@@ -167,7 +171,7 @@ get_MSIS_data <- R6::R6Class(
       with_loc[, age:="Totalt"]
       with_loc[, sex:="Totalt"]
       with_loc[, year:=lubridate::year(date)]
-      msis_data_schema$db_connect(get_config()[["db_config"]])
+      msis_data_schema$db_connect(config$db_config)
       out_data <- with_loc[, .(tag_outcome,
                                location_code,
                                granularity_time,
@@ -184,7 +188,7 @@ get_MSIS_data <- R6::R6Class(
     }
   )
 )
-    
+
 msis_data_schema <- fd::schema$new(
     db_table = "data_msis",
     db_field_types =  c(

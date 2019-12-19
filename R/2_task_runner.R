@@ -4,44 +4,42 @@
 #' Runs analysis and writes results back to DB
 #'
 #' @export
-run_with_data <- function(table, filter, analysis_func,analysis_config, by_location=TRUE){
+run_with_data <- function(r6_func, task_name, by_location=TRUE){
 
-  data <- fd::tbl(table) %>% dplyr::filter(!!!filter) %>% dplyr::collect()
-  setDT(data)
+  x_filter <- task_config$filter
+  data <- fd::tbl(task_config$db_table) %>%
+    dplyr::filter(!!!x_filter) %>%
+    dplyr::collect() %>%
+    fd::latin1_to_utf8()
+
   if(by_location){
     for(loc in unique(data[, location_code])){
       analysis_config[["location_code"]] <- loc
       analysis_config[["data"]] <- data[location_code == loc]
-      res <- do.call( analysis_func, analysis_config)
+      r6_func(data=data[location_code==loc])
+      res <- do.call( analysis_func, task_config$args)
       write_to_db(res, table)
     }
   }else{
-    do.call(analysis_func, analysis_config)
-
+    do.call(analysis_func, task_config$args)
   }
-  
-
-
 }
 
 run_task <- function(task_name, log=TRUE){
-  config <- get_config()
 
-  task_config <- config[["tasks"]][[task_name]]
+  task <- get(tc(task_name)$r6_func)$new(task_name = task_name)
 
-  task <- get(task_config$func)$new()
-
-  if(log == FALSE | task$can_run(task_name, task_config)){
-    print(glue::glue("Running task {task_name}"))  
-    if(task_config[["type"]] == "data" | task_config[["type"]] == "analysis_function"){
-      func <- get(task_config$func)
-      do.call(task$run, task_config[["args"]])
-      
-    }else{
-      run_with_data(task_config[["db_table"]], task_config[["filter"]],
-                    task$run, task_config[["args"]])
+  if(log == FALSE | task$can_run()){
+    print(glue::glue("Running task {task_name}"))
+    if(tc(task_name)[["type"]] %in% c("data", "analysis_function")){
+      task$run()
+    } else {
+      run_with_data(
+        task$run,
+        task_name = task_name
+        )
     }
-    
+
     if(log){
       fd::update_rundate(
         package = task_name,
@@ -60,7 +58,7 @@ run_task <- function(task_name, log=TRUE){
 
 write_to_db <- function(res, table){
   if(!is.null(res)){
-    res[["schema"]]$db_config <- get_config()[["db_config"]]
+    res[["schema"]]$db_config <- config$db_config
     res[["schema"]]$db_connect()
     results_data <- res[["results"]]
     results_data[, source:=table]
@@ -84,13 +82,20 @@ TaskBase <- R6::R6Class(
   "TaskBase",
   portable = FALSE,
   cloneable = TRUE,
-  list(
-    can_run = function(task, config){
+  public = list(
+    task_name = list(),
+    initialize = function(task_name) {
+      task_name <<- task_name
+    },
+    task_config = function(){
+      tc(task_name)
+    },
+    can_run = function(){
       rundates <- fd::get_rundate()
-      last_run_date <- head(rundates[package == task]$date_run, 1)
+      last_run_date <- head(rundates[package == task_name]$date_run, 1)
       curr_date <- lubridate::today()
       dependencies <- c()
-      for(dependency in get_list(config, "dependencies",default=c())){
+      for(dependency in get_list(tc(task_name), "dependencies",default=c())){
         dep_run_date <- rundates[package==dependency]
         if(nrow(dep_run_date) == 0){
           return(FALSE)
@@ -107,7 +112,7 @@ TaskBase <- R6::R6Class(
       if(curr_date <= last_run_date){
           return(FALSE)
       }
-      
+
 
       return(TRUE)
     },
@@ -126,8 +131,8 @@ TaskBase <- R6::R6Class(
       }
       )
     },
-    run_all = function() {
-      stop("run_all must be implemented")
+    run = function() {
+      stop("run must be implemented")
     }
   )
 )
