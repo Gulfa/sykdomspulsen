@@ -85,10 +85,9 @@ run_with_data <- function(r6_func, task_name, by_location=TRUE){
 
 run_task <- function(task_name, log=TRUE){
   task <- get(task_config(task_name)$r6_func)$new(task_name = task_name)
-  output_schema <- task_config(task_name)$output_schema
-  if(!is.null(output_schema)){
-    #fd::drop_table(output_schema$db_table)
-    output_schema$db_connect()
+  if(!is.null(task_config(task_name)$output_schema)){
+    #fd::drop_table(task_config(task_name)$output_schema$db_table)
+    task_config(task_name)$output_schema$db_connect()
   }
 
   if(log == FALSE | task$can_run()){
