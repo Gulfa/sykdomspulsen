@@ -3,13 +3,18 @@
 #' Get and clean MSIS data from msis.no
 #'
 #' @export
-analysis_simple <-R6::R6Class(
-  "analysis_simple",
+AnalysisSimple <-R6::R6Class(
+  "AnalysisSimple",
   inherit = TaskBase,
   portable = FALSE,
   cloneable = FALSE,
   list(
-    run= function(data, group_by="month", past_years=5, location_code=NULL){
+    run= function(data){
+      # arguments start
+      group_by <- task_config(task_name)$args$start_year
+      past_years <- task_config(task_name)$args$end_year
+      location_code <- task_config(task_name)$args$location_code
+      # arguments end
 
       max_year <- max(data[, year])
       min_year <- min(data[, year])

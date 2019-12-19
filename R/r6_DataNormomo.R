@@ -75,8 +75,8 @@ data_normomo_get <- function(){
 #' @import rvest
 #'
 #' @export
-r6_data_normomo <- R6::R6Class(
-  "r6_data_normomo",
+DataNormomo <- R6::R6Class(
+  "DataNormomo",
   inherit = TaskBase,
   portable = FALSE,
   cloneable = FALSE,
@@ -85,27 +85,13 @@ r6_data_normomo <- R6::R6Class(
 
       d <- data_normomo_get()
 
-      fd::drop_table(datar_normomo_schema$db_table)
-      datar_normomo_schema$db_connect(config$db_config)
-      datar_normomo_schema$db_load_data_infile(d)
+      fd::drop_table(config$schema$datar_normomo$db_table)
+      config$schema$datar_normomo$db_connect()
+      config$schema$datar_normomo$db_upsert_load_data_infile(d)
     }
   )
 )
 
-datar_normomo_schema <- fd::schema$new(
-    db_table = "datar_normomo",
-    db_field_types =  c(
-      "uuid" = "TEXT",
-      "DoD" = "DATE",
-      "DoR" = "DATE",
-      "DoB" = "DATE",
-      "age" = "INTEGER",
-      "location_code" = "TEXT"
-    ),
-    db_load_folder = "/xtmp/",
-    keys =  c(
-      "uuid"
-    )
-)
+
 
 

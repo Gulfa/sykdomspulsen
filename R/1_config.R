@@ -1,8 +1,4 @@
-tc <- function(task_name){
-  config$tasks[[task_name]]
-}
-
-.onLoad <- function(libname, pkgname) {
+set_config <- function() {
   config$db_config <- list(
     driver = Sys.getenv("DB_DRIVER", "MySQL"),
     server = Sys.getenv("DB_SERVER", "db"),
@@ -12,26 +8,82 @@ tc <- function(task_name){
     db = Sys.getenv("DB_DB", "sykdomspuls")
   )
 
+  config$schema <- list(
+    datar_normomo = fd::schema$new(
+      db_config = config$db_config,
+      db_table = "datar_normomo",
+      db_field_types =  c(
+        "uuid" = "TEXT",
+        "DoD" = "DATE",
+        "DoR" = "DATE",
+        "DoB" = "DATE",
+        "age" = "INTEGER",
+        "location_code" = "TEXT"
+      ),
+      db_load_folder = "/xtmp/",
+      keys =  c(
+        "uuid"
+      )
+    ),
+    results_normomo = fd::schema$new(
+      db_config = config$db_config,
+      db_table = "results_normomo",
+      db_field_types =  c(
+        "location_code" = "TEXT",
+        "age" = "TEXT",
+        "date" = "DATE",
+        "wk" = "INTEGER",
+        "yrwk" = "TEXT",
+        "YoDi" = "INTEGER",
+        "WoDi" = "INTEGER",
+        "Pnb" = "DOUBLE",
+        "nb" = "DOUBLE",
+        "nbc" = "DOUBLE",
+        "UPIb2" = "DOUBLE",
+        "UPIb4" = "DOUBLE",
+        "UPIc" = "DOUBLE",
+        "LPIc" = "DOUBLE",
+        "UCIc" = "DOUBLE",
+        "LCIc" = "DOUBLE",
+        "zscore" = "DOUBLE",
+        "excess" = "DOUBLE",
+        "thresholdp_0" = "DOUBLE",
+        "thresholdp_1" = "DOUBLE",
+        "thresholdp_2" = "DOUBLE",
+        "excessp" = "DOUBLE",
+        "status" = "TEXT"
+      ),
+      keys = c(
+        "location_code",
+        "age",
+        "yrwk"
+      ),
+      db_load_folder = "/xtmp/",
+      check_fields_match = TRUE
+    )
+  )
+
   config$tasks <- list(
     data_normomo = list(
       task_name = "data_normomo",
       type = "data",
-      r6_func = "r6_data_normomo",
-      args = list()
+      r6_func = "DataNormomo"
     ),
     analysis_normomo = list(
       task_name = "analysis_normomo",
       type = "analysis",
-      r6_func = "r6_analysis_normomo",
+      db_table = "data_msis",
+      r6_func = "AnalysisNormomo",
       dependencies = c("datar_normomo"),
-      args = list()
+      plan_func = analysis_normomo_plan,
+      output_schema = config$schema$results_normomo
     ),
 
     data_msis = list(
       task_name = "data_msis",
       type = "data",
-      r6_func = "r6_data_msis",
-      args = list(
+      r6_func = "DataMSIS",
+      plan = list(
         start_year = 2008,
         end_year = 2019
       )
@@ -40,7 +92,7 @@ tc <- function(task_name){
       task_name = "simple_analysis_msis_kikhoste",
       type = "analysis",
       db_table = "data_msis",
-      r6_func = "analysis_simple",
+      r6_func = "AnalysisSimple",
       dependencies = c("msis_data"),
       filter = dplyr::quos(tag_outcome == "Kikhoste"),
       args = list(
@@ -87,5 +139,5 @@ tc <- function(task_name){
     )
   )
 
-  invisible()
+
 }

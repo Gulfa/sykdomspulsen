@@ -137,16 +137,17 @@ clean_data <- function(data){
 #' @import rvest
 #'
 #' @export
-r6_data_msis <- R6::R6Class(
-  "r6_data_msis",
+DataMSIS <- R6::R6Class(
+  "DataMSIS",
   inherit = TaskBase,
   portable = FALSE,
   cloneable = FALSE,
   list(
     run = function(){
-      # arguments
-      start_year <- tc(task_name)$args$start_year
-      end_year <- tc(task_name)$args$end_year
+      # arguments start
+      start_year <- task_config(task_name)$args$start_year
+      end_year <- task_config(task_name)$args$end_year
+      # arguments end
 
       municips <- get_county_municip()[1:10]
       data_list <- list()
