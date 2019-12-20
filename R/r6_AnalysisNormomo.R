@@ -9,13 +9,13 @@ AnalysisNormomo <-R6::R6Class(
   portable = FALSE,
   cloneable = FALSE,
   list(
-    run = function(data, index_data, index_analysis){
+    run = function(data, analysis){
       # task_name = "analysis_normomo"
       # task_config(task_name)$output_schema$db_connect()
       # index_data = 1
       # index_analysis = 1
       # data <- task_plan_data(task_name, index_data)
-      tpa <- task_plan_analysis(task_name, index_data, index_analysis)
+      tpa <- analysis
 
       d <- as.data.frame(data$deaths_raw[fhi::isoyear_n(DoR)<=tpa$year_end])
 
@@ -62,7 +62,7 @@ analysis_normomo_hfile <- function() {
   return(as.data.frame(hfile))
 }
 
-analysis_normomo_plan <- function(){
+analysis_normomo_plan <- function(config){
   location_code <- c("norway",unique(fd::norway_locations()$county_code))
   p_data <- data.table(location_code = location_code)
   p_data[,filter1 := glue::glue(
@@ -190,4 +190,41 @@ clean_exported_momo_data <- function(
 
   return(data)
 }
+
+results_normomo = fd::schema$new(
+  db_config = config$db_config,
+  db_table = "results_normomo",
+  db_field_types =  c(
+    "location_code" = "TEXT",
+    "age" = "TEXT",
+    "date" = "DATE",
+    "wk" = "INTEGER",
+    "yrwk" = "TEXT",
+    "YoDi" = "INTEGER",
+    "WoDi" = "INTEGER",
+    "Pnb" = "DOUBLE",
+    "nb" = "DOUBLE",
+    "nbc" = "DOUBLE",
+    "UPIb2" = "DOUBLE",
+    "UPIb4" = "DOUBLE",
+    "UPIc" = "DOUBLE",
+    "LPIc" = "DOUBLE",
+    "UCIc" = "DOUBLE",
+    "LCIc" = "DOUBLE",
+    "zscore" = "DOUBLE",
+    "excess" = "DOUBLE",
+    "thresholdp_0" = "DOUBLE",
+    "thresholdp_1" = "DOUBLE",
+    "thresholdp_2" = "DOUBLE",
+    "excessp" = "DOUBLE",
+    "status" = "TEXT"
+  ),
+  keys = c(
+    "location_code",
+    "age",
+    "yrwk"
+  ),
+  db_load_folder = "/xtmp/",
+  check_fields_match = TRUE
+)
 

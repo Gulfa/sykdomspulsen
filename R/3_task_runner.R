@@ -2,18 +2,80 @@ task_config <- function(task_name){
   config$tasks[[task_name]]
 }
 
-task_plan <- function(task_name){
-  task_config(task_name)$plan_func()
+
+plan_from_config <- function(config){
+  if(config$type == "data"){
+    return(list(
+      list(
+        plan_data=list(),
+        plan_analysis=list(
+          get_list(config, "args", list())
+        )
+      )
+      )
+      )
+
+  }
+  if(config$type == "analysis" | config$type == "ui"){
+    table <- config$db_table
+    plan <- list()
+    i <- 1
+    filters <- list()
+    for(t in names(config$for_each)){
+      if(config$for_each[t] == "all"){
+        options <- fd::tbl(table) %>% dplyr::distinct(!!as.symbol(t)) %>%
+          dplyr::collect() %>% dplyr::pull(!!as.symbol(t))
+      }else{
+        options <- config$for_each[[t]]
+      }
+      filters[[t]] <- options
+    }
+
+    filters <- do.call(tidyr::crossing, filters)
+    for(i in 1:nrow(filters)){
+      plan[[i]] <- list(
+        plan_analysis=list(
+          get_list(config, "args", list())
+          
+        )
+      )
+
+      fs <- c()
+      for(n in names(filters)){
+        plan[[i]]$plan_analysis[[1]][[n]] = filters[i,n]
+        fs <- c(fs, glue::glue("{n}=='{filters[i,n]}'"))
+      }
+      extra_filter <- get_list(config, "filter", default="")
+      f <- paste(fs, collapse=" & ")
+      if(extra_filter != ""){
+        f = paste(f, extra_filter, sep=" & ")
+      }
+      plan[[i]][["plan_data"]] <- list(
+        list(
+          db_table=table,
+          filter=f,
+          data="data"
+        )
+      )
+    }
+  return(plan)  
+  }
+  
+}
+
+get_analysis_plan <- function(task_name){
+  config <- task_config(task_name)
+  analysis_plan <- get_list(config, "plan_func", default=plan_from_config)(config)
+  return(analysis_plan)
 }
 
 task_plan_data_length <- function(task_name){
-  return(length(task_plan(task_name)))
+  return(length(get_analysis_plan(task_name)))
 }
 
-task_plan_data <- function(task_name, index_data){
-  tp <- task_plan(task_name)[[index_data]]
+get_data_analysis <- function(tp){
   data <- list()
-  for(i in 1:length(tp$plan_data)){
+  for(i in seq_along(tp$plan_data)){
     x_data <- tp$plan_data[[i]]$data
     x_db_table <- tp$plan_data[[i]]$db_table
     x_filter <- tp$plan_data[[i]]$filter
@@ -44,6 +106,8 @@ task_plan_analysis <- function(task_name, index_data, index_analysis){
   return(tpa)
 }
 
+
+
 task_plan_data_analysis <- function(task_name){
   num_data <- task_plan_data_length(task_name)
   retval <- vector("list", length=num_data)
@@ -55,84 +119,63 @@ task_plan_data_analysis <- function(task_name){
   return(retval)
 }
 
-#' run_with_data
-#'
-#' Fetches data from DB with appropriate filters
-#' Runs analysis and writes results back to DB
-#'
-#' @export
-run_with_data <- function(r6_func, task_name, by_location=TRUE){
-  plan <- task_config(task_name)$plan_func()
-  x_filter <- task_config$filter
-  data <- fd::tbl(task_config$db_table) %>%
-    dplyr::filter(!!!x_filter) %>%
-    dplyr::collect() %>%
-    fd::latin1_to_utf8()
+length_analysis_plan <- function(analysis_plan){
 
-  if(by_location){
-    for(loc in unique(data[, location_code])){
-      analysis_config[["location_code"]] <- loc
-      analysis_config[["data"]] <- data[location_code == loc]
-      r6_func(data=data[location_code==loc])
-      res <- do.call( analysis_func, task_config$args)
-      write_to_db(res, table)
-    }
-  }else{
-    r6_func
-    do.call(analysis_func, task_config$args)
+  l <- 0
+  for(data_i in analysis_plan){
+    l <- l + length(data_i$plan_analysis)
   }
+  return(l)
 }
 
 run_task <- function(task_name, log=TRUE){
+  print(task_config(task_name))
   task <- get(task_config(task_name)$r6_func)$new(task_name = task_name)
-  if(!is.null(task_config(task_name)$output_schema)){
-    #fd::drop_table(task_config(task_name)$output_schema$db_table)
-    task_config(task_name)$output_schema$db_connect()
-  }
+  
+  ## if(!is.null(task_config(task_name)$output_schema)){
+  ##   #fd::drop_table(task_config(task_name)$output_schema$db_table)
+  ##   task_config(task_name)$output_schema$db_connect()
+  ## }
 
   if(log == FALSE | task$can_run()){
     print(glue::glue("Running task {task_name}"))
-    if(is.null(task_config(task_name)$plan_func)){
-      task$run()
-    } else {
-      tpda <- task_plan_data_analysis(task_name)
-      pb <- fhi::txt_progress_bar(max=nrow(tpda))
-      i <- 0
-      for(index_data in 1:task_plan_data_length(task_name)){
-        data <- task_plan_data(task_name, index_data)
-        for(index_analysis in 1:task_plan_analysis_length(task_name, index_data)){
-          task$run(data=data, index_data, index_analysis)
 
-          if(interactive()) utils::setTxtProgressBar(pb, i)
-          i <- i + 1
-        }
+    analysis_plan <- get_analysis_plan(task_name)
+
+    pb <- fhi::txt_progress_bar(max=length_analysis_plan(analysis_plan))
+    i <- 0
+    for(index_data in 1:length(analysis_plan)){
+      data <- get_data_analysis(analysis_plan[[index_data]])
+      analysis_plan_analyses <- get_list(analysis_plan[[index_data]], "plan_analysis", default=list())
+      for(index_analysis in seq_along(analysis_plan_analyses)){
+        task$run(data=data, analysis_plan[[index_data]]$plan_data,
+                 analysis_plan_analyses[[index_analysis]])
+        if(interactive()) utils::setTxtProgressBar(pb, i)
+        i <- i + 1
       }
     }
-
+    
     if(log){
       fd::update_rundate(
         package = task_name,
         date_results = lubridate::today(),
         date_extraction = lubridate::today(),
         date_run = lubridate::today()
-
+        
       )
     }
   }else{
     print(glue::glue("Not runng {task_name}"))
   }
-
+  
 }
 
 
-write_to_db <- function(res, table){
-  if(!is.null(res)){
-    res[["schema"]]$db_config <- config$db_config
-    res[["schema"]]$db_connect()
-    results_data <- res[["results"]]
-    results_data[, source:=table]
-    res[["schema"]]$db_upsert_load_data_infile(results_data)
-  }
+write_to_db <- function(results=NULL, schema=NULL, source_table=NULL){
+  schema$db_config <- config$db_config
+  schema$db_connect()
+  results[, source:=source_table]
+  schema$db_upsert_load_data_infile(results)
 }
 
 
