@@ -143,12 +143,11 @@ DataMSIS <- R6::R6Class(
   portable = FALSE,
   cloneable = FALSE,
   list(
-    run = function(){
+    run = function(data, analysis){
       # arguments start
-      start_year <- task_config(task_name)$args$start_year
-      end_year <- task_config(task_name)$args$end_year
+      start_year <- analysis$start_year
+      end_year <- analysis$end_year
       # arguments end
-
       municips <- get_county_municip()[1:10]
       data_list <- list()
       i = 1
