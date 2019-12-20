@@ -86,6 +86,7 @@ DataNormomo <- R6::R6Class(
       d <- data_normomo_get()
 
       fd::drop_table(datar_normomo$db_table)
+      datar_normomo$db_config <- config$db_config
       datar_normomo$db_connect()
       datar_normomo$db_upsert_load_data_infile(d)
     }
