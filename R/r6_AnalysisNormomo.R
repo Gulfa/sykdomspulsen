@@ -9,13 +9,13 @@ AnalysisNormomo <-R6::R6Class(
   portable = FALSE,
   cloneable = FALSE,
   list(
-    run = function(data, analysis){
+    run = function(data, data_plan, analysis_plan){
       # task_name = "analysis_normomo"
       # task_config(task_name)$output_schema$db_connect()
       # index_data = 1
       # index_analysis = 1
       # data <- task_plan_data(task_name, index_data)
-      tpa <- analysis
+      tpa <- analysis_plan
 
       d <- as.data.frame(data$deaths_raw[fhi::isoyear_n(DoR)<=tpa$year_end])
 
@@ -49,8 +49,10 @@ AnalysisNormomo <-R6::R6Class(
         data_to_save,
         location_code = tpa$location_code
         )
-
-      task_config(task_name)$output_schema$db_upsert_load_data_infile(data_clean)
+      results_normomo$db_config = config$db_config
+      results_normomo$db_connect(config$db_config)
+      results_normomo$db_upsert_load_data_infile(data_clean)
+#      close(results_normomo$conn)
     }
   )
 )

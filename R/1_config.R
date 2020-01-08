@@ -7,6 +7,16 @@ set_config <- function() {
     password = Sys.getenv("DB_PASSWORD", "example"),
     db = Sys.getenv("DB_DB", "sykdomspuls")
   )
+  config$AGES <- list(
+    "Totalt" = c(0:105),
+    "0-4" = c(0:4),
+    "5-14" = c(5:14),
+    "15-19" = c(15:19),
+    "20-29" = c(20:29),
+    "30-64" = c(30:64),
+    "65+" = c(65:105)
+  )
+  
   config$tasks <- list(
     data_normomo = list(
       task_name = "data_normomo",
@@ -30,6 +40,25 @@ set_config <- function() {
       args = list(
         start_year = 2008,
         end_year = 2019
+      )
+    ),
+    data_norsyss = list(
+      task_name = "data_norsyss",
+      type = "data",
+      r6_func = "DataNorSySS",
+      args = list(
+        syndromes = rbind(
+          data.table(
+            tag = "gastro",
+            syndrome = "gastro",
+            contactType = list(c("Legekontakt", "Telefonkontakt"))
+          ),
+          data.table(
+            tag = "influensa",
+            syndrome = "influensa",
+            contactType = list("Legekontakt")
+          )
+        )
       )
     ),
     simple_analysis_msis = list(

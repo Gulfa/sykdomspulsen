@@ -141,7 +141,7 @@ run_task <- function(task_name, log=TRUE){
     print(glue::glue("Running task {task_name}"))
 
     analysis_plan <- get_analysis_plan(task_name)
-
+    print(analysis_plan)
     pb <- fhi::txt_progress_bar(max=length_analysis_plan(analysis_plan))
     i <- 0
     for(index_data in 1:length(analysis_plan)){

@@ -143,7 +143,7 @@ DataMSIS <- R6::R6Class(
   portable = FALSE,
   cloneable = FALSE,
   list(
-    run = function(data, analysis){
+    run = function(data, plan_data, analysis){
       # arguments start
       start_year <- analysis$start_year
       end_year <- analysis$end_year
