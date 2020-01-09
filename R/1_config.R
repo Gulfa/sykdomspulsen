@@ -145,14 +145,14 @@ set_config <- function() {
     )
   )
 
-  config$schedule <- Schedule$new()
-  config$schedule$task_add(
+  config$tasks <- TaskManager$new()
+  config$tasks$task_add(
     task_name = "data_normomo",
     type = "data",
     r6= "DataNormomo"
   )
 
-  config$schedule$task_add(
+  config$tasks$task_add(
     task_name = "analysis_normomo",
     type = "analysis",
     r6 = "AnalysisNormomo",

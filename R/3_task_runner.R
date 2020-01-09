@@ -1,106 +1,60 @@
-#' Schedule
-#' @import R6
+#' Shortcut to task
+#' @param task_name Name of the task
+#' @param index_plan Not used
+#' @param index_argset Not used
 #' @export
-Schedule <- R6::R6Class(
-  "Schedule",
-  portable = FALSE,
-  cloneable = TRUE,
-  public = list(
-    list_task = list(),
-    initialize = function() {
-    },
-    task_add = function(
-      task_name = NULL,
-      type = NULL,
-      r6 = NULL,
-      list_plan = NULL,
-      fn_plan = NULL,
-      schema = NULL
-    ){
-      list_task[[task_name]] <<- list(
-        task_name = task_name,
-        type = type,
-        r6 = r6,
-        list_plan = list_plan,
-        fn_plan = fn_plan,
-        schema = schema
-      )
-    },
-    list_plan_get = function(task_name){
-      if(is.null(list_task[[task_name]]$list_plan) & is.null(list_task[[task_name]]$fn_plan)){
-        retval <- list(x=1)
-      } else if(!is.null(list_task[[task_name]]$list_plan) & is.null(list_task[[task_name]]$fn_plan)){
-        retval <- list_task[[task_name]]$list_plan
-      } else if(is.null(list_task[[task_name]]$list_plan) & !is.null(list_task[[task_name]]$fn_plan)){
-        retval <- list_task[[task_name]]$fn_plan()
-      }
-      return(retval)
-    },
-    task_get = function(task_name){
-      retval <- list()
-      retval$action <- get(list_task[[task_name]]$r6)$new(task_name = task_name)
-      retval$type <- list_task[[task_name]]$type
-      retval$list_plan <- list_plan_get(task_name)
-      retval$schema <- list()
-      for(i in seq_along(list_task[[task_name]]$schema)){
-        nam <- names(list_task[[task_name]]$schema)[i]
-        sch <- list_task[[task_name]]$schema
-        retval$schema[[nam]] <- config$schema[[sch]]
-      }
+tm_shortcut_task <- function(task_name, index_plan = NULL, index_argset = NULL){
+  config$tasks$task_get(task_name)
+}
 
-      return(retval)
-    },
-    action_run = function(task_name, plan_index){
+#' Shortcut to plan within task
+#' @param task_name Name of the task
+#' @param index_plan Plan within task
+#' @param index_argset Not used
+#' @export
+tm_shortcut_plan <- function(task_name, index_plan = 1, index_argset = NULL){
+  tm_shortcut_task(task_name = task_name)$list_plan[[index_plan]]
+}
 
-    },
-    task_num_actions = function(task_name){
-      task <- task_get(task_name)
-      i <- 0
-      for(i in seq_along(task$list_plan)){
-        i <- i + task$list_plan[[i]]$len()
-      }
-      return(i)
-    },
-    task_run = function(task_name, log=TRUE){
-      # task <- config$schedule$task_get("analysis_normomo")
-      print(task_name)
-      task <- task_get(task_name)
+#' Shortcut to data within plan within task
+#' @param task_name Name of the task
+#' @param index_plan Plan within task
+#' @param index_argset Not used
+#' @export
+tm_shortcut_data <- function(task_name, index_plan = 1, index_argset = NULL){
+  tm_shortcut_plan(
+    task_name = task_name,
+    index_plan = index_plan
+  )$data_get()
+}
 
-      if(log == FALSE | task$action$can_run()){
-        print(glue::glue("Running task {task_name}"))
+#' Shortcut to argset within plan within task
+#' @param task_name Name of the task
+#' @param index_plan Plan within task
+#' @param index_argset Argset within plan
+#' @export
+tm_shortcut_argset <- function(task_name, index_plan = 1, index_argset = 1){
+  tm_shortcut_plan(
+    task_name = task_name,
+    index_plan = index_plan
+  )$argset_get(index_argset)
+}
 
-        pb <- fhi::txt_progress_bar(max=task_num_actions(task_name))
-        pi <- 0
-        for(i in seq_along(task$list_plan)){
-          data <- task$list_plan[[i]]$data_get()
-          for(j in task$list_plan[[i]]$x_seq_along()){
-            arg <- task$list_plan[[i]]$analysis_get(j)$arg
-            task$action$run(
-              data = data,
-              arg = arg,
-              schema = task$schema
-            )
-            if(interactive()) utils::setTxtProgressBar(pb, pi)
-            pi <- pi + 1
-          }
-        }
-        if(log){
-          fd::update_rundate(
-            package = task_name,
-            date_results = lubridate::today(),
-            date_extraction = lubridate::today(),
-            date_run = lubridate::today()
-          )
-        }
-      }else{
-        print(glue::glue("Not runng {task_name}"))
-      }
-    },
-    run = function() {
-      stop("run must be implemented")
-    }
-  )
-)
+#' Shortcut to schema within task
+#' @param task_name Name of the task
+#' @param index_plan Not used
+#' @param index_argset Not used
+#' @export
+tm_shortcut_schema <- function(task_name, index_plan = NULL, index_argset = NULL){
+  tm_shortcut_task(
+    task_name = task_name
+  )$schema
+}
+
+# data <- config$tasks$task_get("analysis_normomo")$list_plan[[1]]$data_get()
+# argset <- config$tasks$task_get("analysis_normomo")$list_plan[[1]]$argset_get(1)
+# schema <- config$tasks$task_get("analysis_normomo")$schema
+
 
 
 task_config <- function(task_name){

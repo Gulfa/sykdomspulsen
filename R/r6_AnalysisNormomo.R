@@ -5,15 +5,19 @@
 #' @export
 AnalysisNormomo <-R6::R6Class(
   "AnalysisNormomo",
-  inherit = TaskBase,
+  inherit = ActionBase,
   portable = FALSE,
   cloneable = FALSE,
   list(
-    run = function(data, arg, schema){
-      # data <- config$schedule$task_get("analysis_normomo")$list_plan[[1]]$data_get()
-      # arg <- config$schedule$task_get("analysis_normomo")$list_plan[[1]]$analysis_get(1)$arg
-      # schema <- config$schedule$task_get("analysis_normomo")$schema
-      d <- as.data.frame(data$raw[fhi::isoyear_n(DoR)<=arg$year_end])
+    run = function(data, argset, schema){
+      # data <- config$tasks$task_get("analysis_normomo")$list_plan[[1]]$data_get()
+      # argset <- config$tasks$task_get("analysis_normomo")$list_plan[[1]]$argset_get(1)
+      # schema <- config$tasks$task_get("analysis_normomo")$schema
+
+      # data <- tm_shortcut_data("analysis_normomo", index_plan=1)
+      # argset <- tm_shortcut_argset("analysis_normomo", index_plan=1, index_argset = 1)
+      # schema <- tm_shortcut_schema("analysis_normomo")
+      d <- as.data.frame(data$raw[fhi::isoyear_n(DoR)<=argset$year_end])
 
       MOMO::SetOpts(
         DoA = max(d$DoR),
@@ -146,7 +150,7 @@ analysis_normomo_plan <- function(config){
     fd::tbl("datar_normomo") %>% dplyr::collect() %>% fd::latin1_to_utf8()
   })
   for(i in 2012:lubridate::year(lubridate::today())){
-    list_plan[[length(list_plan)]]$analysis_add(
+    list_plan[[length(list_plan)]]$argset_add(
       location_code = "norway",
       year_end = i,
       momo_groups = list(
@@ -171,7 +175,7 @@ analysis_normomo_plan <- function(config){
       fd::tbl("datar_normomo") %>% dplyr::collect() %>% fd::latin1_to_utf8()
     })
     for(i in 2012:lubridate::year(lubridate::today())){
-      list_plan[[length(list_plan)]]$analysis_add(
+      list_plan[[length(list_plan)]]$argset_add(
         location_code = j,
         year_end = i,
         momo_groups = list(

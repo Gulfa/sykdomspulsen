@@ -77,7 +77,7 @@ data_normomo_get <- function(){
 #' @export
 DataNormomo <- R6::R6Class(
   "DataNormomo",
-  inherit = TaskBase,
+  inherit = ActionBase,
   portable = FALSE,
   cloneable = FALSE,
   list(
