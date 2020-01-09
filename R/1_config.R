@@ -1,4 +1,10 @@
 set_config <- function() {
+  set_computer_name()
+  set_computer_type()
+  set_border()
+
+  # set DB
+
   config$db_config <- list(
     driver = Sys.getenv("DB_DRIVER", "MySQL"),
     server = Sys.getenv("DB_SERVER", "db"),
@@ -7,6 +13,8 @@ set_config <- function() {
     password = Sys.getenv("DB_PASSWORD", "example"),
     db = Sys.getenv("DB_DB", "sykdomspuls")
   )
+
+  # set schema
 
   config$schema <- list(
     datar_normomo = fd::schema$new(
@@ -27,7 +35,7 @@ set_config <- function() {
     ),
     results_normomo = fd::schema$new(
       db_config = config$db_config,
-      db_table = "results_normomo",
+      db_table = "results_normomo_standard",
       db_field_types =  c(
         "location_code" = "TEXT",
         "age" = "TEXT",
@@ -160,4 +168,46 @@ set_config <- function() {
     schema = c("output"="results_normomo")
   )
 
+}
+
+
+set_computer_name <- function() {
+  if (file.exists("/tmp/computer")) {
+    con <- file("/tmp/computer", "r")
+    name_computer <- readLines(con, n = 1)
+    close(con)
+  } else {
+    name_computer <- "NO_NAME_FOUND"
+  }
+  Sys.setenv(COMPUTER = name_computer)
+  config$name_computer <- name_computer
+}
+
+set_computer_type <- function() {
+  if (config$name_computer %in% config$name_production) {
+    config$is_production <- TRUE
+  } else if (config$name_computer %in% config$name_testing) {
+    config$is_testing <- TRUE
+  } else {
+    config$is_dev <- TRUE
+  }
+}
+
+set_db <- function() {
+  config$db_config <- list(
+    driver = Sys.getenv("DB_DRIVER", "MySQL"),
+    server = Sys.getenv("DB_SERVER", "db"),
+    port = as.integer(Sys.getenv("DB_PORT", 3306)),
+    user = Sys.getenv("DB_USER", "root"),
+    password = Sys.getenv("DB_PASSWORD", "example"),
+    db = Sys.getenv("DB_DB", "sykdomspuls")
+  )
+}
+
+set_border <- function() {
+  if (config$is_production) {
+    config$border <- 2020
+  } else {
+    config$border <- 2020
+  }
 }

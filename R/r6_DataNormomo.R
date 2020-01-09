@@ -1,5 +1,5 @@
 data_normomo_get <- function(){
-  if(fd::config$is_production){
+  if(config$is_production){
     data_grab <- glue::glue(
       'get -r "ut" /data_raw/normomo/\n',
       'rm ut/*'
@@ -32,7 +32,7 @@ data_normomo_get <- function(){
 
   d <- merge(
     d,
-    fd::norway_county_merging(),
+    norway_county_merging(),
     by.x = c("county_code", "year"),
     by.y = c("county_code_original", "year"),
     all.x = T,
@@ -85,7 +85,7 @@ DataNormomo <- R6::R6Class(
 
       d <- data_normomo_get()
 
-      fd::drop_table(config$schema$datar_normomo$db_table)
+      drop_table(config$schema$datar_normomo$db_table)
       config$schema$datar_normomo$db_connect()
       config$schema$datar_normomo$db_upsert_load_data_infile(d)
     }
