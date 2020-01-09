@@ -57,9 +57,49 @@ set_config <- function() {
             tag = "influensa",
             syndrome = "influensa",
             contactType = list("Legekontakt")
+          ),
+           data.table(
+             tag = "influensa_all",
+            syndrome = "influensa_all",
+            contactType = list(c("Legekontakt", "Telefonkontakt"))
           )
         )
       )
+    ),
+    norsyss_mem_influensa = list(
+      task_name = "norsyss_mem_influensa",
+      db_table = "data_norsyss",
+      type = "analysis",
+      dependencies = c("norsyss_data"),
+      r6_func = "AnalysisMEM",
+      filter = "(granularity_geo=='county' | granularity_geo=='norge') & tag_outcome=='influensa'",
+      for_each=list("location_code"="all"),
+      args = list(
+        age = jsonlite::toJSON(list("Totalt" = c("Totalt"))),
+        tag = "influensa",
+        weeklyDenominatorFunction = "sum",
+        multiplicative_factor = 100,
+        denominator = "consult_with_influenza"
+        )
+    ),
+    norsyss_mem_influensa_all = list(
+      task_name = "norsyss_mem_influensa_all",
+      db_table = "data_norsyss",
+      type = "analysis",
+      dependencies = c("norsyss_data"),
+      r6_func = "AnalysisMEM",
+      filter = "(granularity_geo=='county' | granularity_geo=='norge') & tag_outcome=='influensa_all'",
+      for_each=list("location_code"="all"),
+      args = list(
+        age = jsonlite::toJSON(list(
+          "0-4" = c("0-4"), "5-14" = c("5-14"),
+          "15-64" = c("15-19", "20-29", "30-64"), "65+" = c("65+")
+        )),
+        tag = "influensa",
+        weeklyDenominatorFunction = "sum",
+        multiplicative_factor = 100,
+        denominator = "consult_with_influenza"
+        )
     ),
     simple_analysis_msis = list(
       task_name = "simple_analysis_msis",

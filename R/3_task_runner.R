@@ -17,13 +17,18 @@ plan_from_config <- function(config){
 
   }
   if(config$type == "analysis" | config$type == "ui"){
-    table <- config$db_table
+    table_name <- config$db_table
     plan <- list()
     i <- 1
     filters <- list()
     for(t in names(config$for_each)){
       if(config$for_each[t] == "all"){
-        options <- fd::tbl(table) %>% dplyr::distinct(!!as.symbol(t)) %>%
+        filter <- get_list(config, "filter", default="")
+        table <- fd::tbl(table_name)
+        if(filter != ""){
+          table <- table %>% dplyr::filter(!!!rlang::parse_exprs(filter))
+        }
+        options <- table %>% dplyr::distinct(!!as.symbol(t)) %>%
           dplyr::collect() %>% dplyr::pull(!!as.symbol(t))
       }else{
         options <- config$for_each[[t]]
@@ -52,7 +57,7 @@ plan_from_config <- function(config){
       }
       plan[[i]][["plan_data"]] <- list(
         list(
-          db_table=table,
+          db_table=table_name,
           filter=f,
           data="data"
         )
@@ -79,7 +84,8 @@ get_data_analysis <- function(tp){
     x_data <- tp$plan_data[[i]]$data
     x_db_table <- tp$plan_data[[i]]$db_table
     x_filter <- tp$plan_data[[i]]$filter
-
+    print(x_filter)
+    print(x_db_table)
     if(is.na(x_filter)){
       d <- fd::tbl(x_db_table) %>%
         dplyr::collect() %>%
@@ -141,7 +147,7 @@ run_task <- function(task_name, log=TRUE){
     print(glue::glue("Running task {task_name}"))
 
     analysis_plan <- get_analysis_plan(task_name)
-    print(analysis_plan)
+    #print(analysis_plan)
     pb <- fhi::txt_progress_bar(max=length_analysis_plan(analysis_plan))
     i <- 0
     for(index_data in 1:length(analysis_plan)){

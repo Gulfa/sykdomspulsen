@@ -301,13 +301,19 @@ CleanData <- function(d,
     "n",
     "consult_without_influenza",
     "consult_with_influenza",
-    "pop"
+    "pop",
+    "year",
+    "week",
+    "wkyr"
   ))
 
   data[, sex:="Totalt"]
   data[, border:=fd::config$border]
   data[, granularity_time:="day"]
-
+  ## data[, yrwk := fhi::isoyearweek(date)]
+  ## data[, year := fhi::isoyear_n(date)]
+  ## data[, week := fhi::isoweek_n(date)]
+  ## data[, season := fhi::season(yrwk)]
   
   ## if (!ValidateDataClean(data)) {
   ##   fd::msg("Clean data not validated", type = "err")
