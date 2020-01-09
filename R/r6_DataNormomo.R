@@ -81,13 +81,13 @@ DataNormomo <- R6::R6Class(
   portable = FALSE,
   cloneable = FALSE,
   list(
-    run = function(data, data_plan, analysis_plan){
+    run = function(data, arg){
 
       d <- data_normomo_get()
 
-      fd::drop_table(datar_normomo$db_table)
-      datar_normomo$db_connect()
-      datar_normomo$db_upsert_load_data_infile(d)
+      fd::drop_table(config$schema$datar_normomo$db_table)
+      config$schema$datar_normomo$db_connect()
+      config$schema$datar_normomo$db_upsert_load_data_infile(d)
     }
   )
 )
@@ -95,19 +95,3 @@ DataNormomo <- R6::R6Class(
 
 
 
-datar_normomo = fd::schema$new(
-  db_config = config$db_config,
-  db_table = "datar_normomo",
-  db_field_types =  c(
-    "uuid" = "TEXT",
-    "DoD" = "DATE",
-    "DoR" = "DATE",
-    "DoB" = "DATE",
-    "age" = "INTEGER",
-    "location_code" = "TEXT"
-  ),
-  db_load_folder = "/xtmp/",
-  keys =  c(
-    "uuid"
-  )
-)
