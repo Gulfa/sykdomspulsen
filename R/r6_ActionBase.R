@@ -1,8 +1,8 @@
-#' Task Base Class
+#' Action Base Class
 #' @import R6
 #' @export
-TaskBase <- R6::R6Class(
-  "TaskBase",
+ActionBase <- R6::R6Class(
+  "ActionBase",
   portable = FALSE,
   cloneable = TRUE,
   public = list(
@@ -11,6 +11,7 @@ TaskBase <- R6::R6Class(
       task_name <<- task_name
     },
     can_run = function(){
+      return(T)
       rundates <- fd::get_rundate()
       last_run_date <- head(rundates[package == task_name]$date_run, 1)
       curr_date <- lubridate::today()

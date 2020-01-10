@@ -5,26 +5,26 @@
 #' @export
 AnalysisNormomo <-R6::R6Class(
   "AnalysisNormomo",
-  inherit = TaskBase,
+  inherit = ActionBase,
   portable = FALSE,
   cloneable = FALSE,
   list(
-    run = function(data, data_plan, analysis_plan){
-      # task_name = "analysis_normomo"
-      # task_config(task_name)$output_schema$db_connect()
-      # index_data = 1
-      # index_analysis = 1
-      # data <- task_plan_data(task_name, index_data)
-      tpa <- analysis_plan
+    run = function(data, argset, schema){
+      # data <- config$tasks$task_get("analysis_normomo")$list_plan[[1]]$data_get()
+      # argset <- config$tasks$task_get("analysis_normomo")$list_plan[[1]]$argset_get(1)
+      # schema <- config$tasks$task_get("analysis_normomo")$schema
 
-      d <- as.data.frame(data$deaths_raw[fhi::isoyear_n(DoR)<=tpa$year_end])
+      # data <- tm_shortcut_data("analysis_normomo", index_plan=1)
+      # argset <- tm_shortcut_argset("analysis_normomo", index_plan=1, index_argset = 1)
+      # schema <- tm_shortcut_schema("analysis_normomo")
+      d <- as.data.frame(data$raw[fhi::isoyear_n(DoR)<=argset$year_end])
 
       MOMO::SetOpts(
         DoA = max(d$DoR),
         DoPR = as.Date("2012-1-1"),
         WStart = 1,
         WEnd = 52,
-        country = tpa$location_code,
+        country = arg$location_code,
         source = "FHI",
         MDATA = d,
         HDATA = analysis_normomo_hfile(),
@@ -32,13 +32,13 @@ AnalysisNormomo <-R6::R6Class(
         WDIR = tempdir(),
         back = 7,
         WWW = 290,
-        Ysum = tpa$year_end,
+        Ysum = arg$year_end,
         Wsum = 40,
         plotGraphs = FALSE,
         delayVersion = "richard",
         delayFunction = NULL,
-        MOMOgroups = tpa$momo_groups,
-        MOMOmodels = tpa$momo_models,
+        MOMOgroups = arg$momo_groups,
+        MOMOmodels = arg$momo_models,
         verbose = FALSE
       )
 
@@ -47,12 +47,9 @@ AnalysisNormomo <-R6::R6Class(
       data_to_save <- rbindlist(MOMO::dataExport$toSave, fill = TRUE)
       data_clean <- clean_exported_momo_data(
         data_to_save,
-        location_code = tpa$location_code
+        location_code = arg$location_code
         )
-      results_normomo$db_config = config$db_config
-      results_normomo$db_connect(config$db_config)
-      results_normomo$db_upsert_load_data_infile(data_clean)
-#      close(results_normomo$conn)
+      schema$output$db_upsert_load_data_infile(data_clean)
     }
   )
 )
@@ -144,6 +141,63 @@ analysis_normomo_plan <- function(config){
   return(plan)
 }
 
+analysis_normomo_plan <- function(config){
+  location_code <- c("norway",unique(fd::norway_locations()$county_code))
+  list_plan <- list()
+  list_plan[[length(list_plan)+1]] <- plnr::Plan$new()
+  list_plan[[length(list_plan)]]$data_add(name = "raw", fn=function(){
+    fd::tbl("datar_normomo") %>% dplyr::collect() %>% fd::latin1_to_utf8()
+  })
+  for(i in 2012:lubridate::year(lubridate::today())){
+    list_plan[[length(list_plan)]]$argset_add(
+      location_code = "norway",
+      year_end = i,
+      momo_groups = list(
+        "0to4" =  "age >= 0 & age <=4",
+        "5to14" = "age >= 5 & age <=14",
+        "15to64" = "age >= 15 & age <=64",
+        "65P" = "age >= 65 | is.na(age)",
+        "Total" = "age >= 0 | is.na(age)"
+      ),
+      momo_models = c(
+        "0to4" = "LINE",
+        "5to14" = "LINE",
+        "15to64" = "LINE_SIN",
+        "65P" = "LINE_SIN",
+        "Total" = "LINE_SIN"
+      )
+    )
+  }
+  for(j in unique(fd::norway_locations()$county_code)){
+    list_plan[[length(list_plan)+1]] <- plnr::Plan$new()
+    list_plan[[length(list_plan)]]$data_add(name = "raw", fn=function(){
+      fd::tbl("datar_normomo") %>% dplyr::collect() %>% fd::latin1_to_utf8()
+    })
+    for(i in 2012:lubridate::year(lubridate::today())){
+      list_plan[[length(list_plan)]]$argset_add(
+        location_code = j,
+        year_end = i,
+        momo_groups = list(
+          "0to4" =  "age >= 0 & age <=4",
+          "5to14" = "age >= 5 & age <=14",
+          "15to64" = "age >= 15 & age <=64",
+          "65P" = "age >= 65 | is.na(age)",
+          "Total" = "age >= 0 | is.na(age)"
+        ),
+        momo_models = c(
+          "0to4" = "LINE",
+          "5to14" = "LINE",
+          "15to64" = "LINE_SIN",
+          "65P" = "LINE_SIN",
+          "Total" = "LINE_SIN"
+        )
+      )
+    }
+  }
+
+  return(list_plan)
+}
+
 
 
 clean_exported_momo_data <- function(
@@ -193,40 +247,5 @@ clean_exported_momo_data <- function(
   return(data)
 }
 
-results_normomo = fd::schema$new(
-  db_config = config$db_config,
-  db_table = "results_normomo",
-  db_field_types =  c(
-    "location_code" = "TEXT",
-    "age" = "TEXT",
-    "date" = "DATE",
-    "wk" = "INTEGER",
-    "yrwk" = "TEXT",
-    "YoDi" = "INTEGER",
-    "WoDi" = "INTEGER",
-    "Pnb" = "DOUBLE",
-    "nb" = "DOUBLE",
-    "nbc" = "DOUBLE",
-    "UPIb2" = "DOUBLE",
-    "UPIb4" = "DOUBLE",
-    "UPIc" = "DOUBLE",
-    "LPIc" = "DOUBLE",
-    "UCIc" = "DOUBLE",
-    "LCIc" = "DOUBLE",
-    "zscore" = "DOUBLE",
-    "excess" = "DOUBLE",
-    "thresholdp_0" = "DOUBLE",
-    "thresholdp_1" = "DOUBLE",
-    "thresholdp_2" = "DOUBLE",
-    "excessp" = "DOUBLE",
-    "status" = "TEXT"
-  ),
-  keys = c(
-    "location_code",
-    "age",
-    "yrwk"
-  ),
-  db_load_folder = "/xtmp/",
-  check_fields_match = TRUE
-)
+
 

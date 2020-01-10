@@ -1,3 +1,62 @@
+#' Shortcut to task
+#' @param task_name Name of the task
+#' @param index_plan Not used
+#' @param index_argset Not used
+#' @export
+tm_shortcut_task <- function(task_name, index_plan = NULL, index_argset = NULL){
+  config$tasks$task_get(task_name)
+}
+
+#' Shortcut to plan within task
+#' @param task_name Name of the task
+#' @param index_plan Plan within task
+#' @param index_argset Not used
+#' @export
+tm_shortcut_plan <- function(task_name, index_plan = 1, index_argset = NULL){
+  tm_shortcut_task(task_name = task_name)$list_plan[[index_plan]]
+}
+
+#' Shortcut to data within plan within task
+#' @param task_name Name of the task
+#' @param index_plan Plan within task
+#' @param index_argset Not used
+#' @export
+tm_shortcut_data <- function(task_name, index_plan = 1, index_argset = NULL){
+  tm_shortcut_plan(
+    task_name = task_name,
+    index_plan = index_plan
+  )$data_get()
+}
+
+#' Shortcut to argset within plan within task
+#' @param task_name Name of the task
+#' @param index_plan Plan within task
+#' @param index_argset Argset within plan
+#' @export
+tm_shortcut_argset <- function(task_name, index_plan = 1, index_argset = 1){
+  tm_shortcut_plan(
+    task_name = task_name,
+    index_plan = index_plan
+  )$argset_get(index_argset)
+}
+
+#' Shortcut to schema within task
+#' @param task_name Name of the task
+#' @param index_plan Not used
+#' @param index_argset Not used
+#' @export
+tm_shortcut_schema <- function(task_name, index_plan = NULL, index_argset = NULL){
+  tm_shortcut_task(
+    task_name = task_name
+  )$schema
+}
+
+# data <- config$tasks$task_get("analysis_normomo")$list_plan[[1]]$data_get()
+# argset <- config$tasks$task_get("analysis_normomo")$list_plan[[1]]$argset_get(1)
+# schema <- config$tasks$task_get("analysis_normomo")$schema
+
+
+
 task_config <- function(task_name){
   config$tasks[[task_name]]
 }
@@ -9,7 +68,7 @@ plan_from_config <- function(config){
       list(
         plan_data=list(),
         plan_analysis=list(
-          get_list(config, "args", list())
+          get_list(config, "plans", list())
         )
       )
       )
@@ -40,8 +99,8 @@ plan_from_config <- function(config){
     for(i in 1:nrow(filters)){
       plan[[i]] <- list(
         plan_analysis=list(
-          get_list(config, "args", list())
-          
+          get_list(config, "plans", list())
+
         )
       )
 
@@ -63,9 +122,9 @@ plan_from_config <- function(config){
         )
       )
     }
-  return(plan)  
+  return(plan)
   }
-  
+
 }
 
 get_analysis_plan <- function(task_name){
@@ -137,7 +196,7 @@ length_analysis_plan <- function(analysis_plan){
 run_task <- function(task_name, log=TRUE){
   print(task_config(task_name))
   task <- get(task_config(task_name)$r6_func)$new(task_name = task_name)
-  
+
   ## if(!is.null(task_config(task_name)$output_schema)){
   ##   #fd::drop_table(task_config(task_name)$output_schema$db_table)
   ##   task_config(task_name)$output_schema$db_connect()
@@ -154,26 +213,29 @@ run_task <- function(task_name, log=TRUE){
       data <- get_data_analysis(analysis_plan[[index_data]])
       analysis_plan_analyses <- get_list(analysis_plan[[index_data]], "plan_analysis", default=list())
       for(index_analysis in seq_along(analysis_plan_analyses)){
-        task$run(data=data, analysis_plan[[index_data]]$plan_data,
-                 analysis_plan_analyses[[index_analysis]])
+        task$run(
+          data=data,
+          analysis_plan[[index_data]]$plan_data,
+          analysis_plan_analyses[[index_analysis]]
+        )
         if(interactive()) utils::setTxtProgressBar(pb, i)
         i <- i + 1
       }
     }
-    
+
     if(log){
       fd::update_rundate(
         package = task_name,
         date_results = lubridate::today(),
         date_extraction = lubridate::today(),
         date_run = lubridate::today()
-        
+
       )
     }
   }else{
     print(glue::glue("Not runng {task_name}"))
   }
-  
+
 }
 
 

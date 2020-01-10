@@ -1,5 +1,5 @@
 data_normomo_get <- function(){
-  if(fd::config$is_production){
+  if(config$is_production){
     data_grab <- glue::glue(
       'get -r "ut" /data_raw/normomo/\n',
       'rm ut/*'
@@ -32,7 +32,7 @@ data_normomo_get <- function(){
 
   d <- merge(
     d,
-    fd::norway_county_merging(),
+    norway_county_merging(),
     by.x = c("county_code", "year"),
     by.y = c("county_code_original", "year"),
     all.x = T,
@@ -77,18 +77,17 @@ data_normomo_get <- function(){
 #' @export
 DataNormomo <- R6::R6Class(
   "DataNormomo",
-  inherit = TaskBase,
+  inherit = ActionBase,
   portable = FALSE,
   cloneable = FALSE,
   list(
-    run = function(data, data_plan, analysis_plan){
+    run = function(data, arg){
 
       d <- data_normomo_get()
 
-      fd::drop_table(datar_normomo$db_table)
-      datar_normomo$db_config <- config$db_config
-      datar_normomo$db_connect()
-      datar_normomo$db_upsert_load_data_infile(d)
+      drop_table(config$schema$datar_normomo$db_table)
+      config$schema$datar_normomo$db_connect()
+      config$schema$datar_normomo$db_upsert_load_data_infile(d)
     }
   )
 )
@@ -96,19 +95,3 @@ DataNormomo <- R6::R6Class(
 
 
 
-datar_normomo = fd::schema$new(
-  db_config = config$db_config,
-  db_table = "datar_normomo",
-  db_field_types =  c(
-    "uuid" = "TEXT",
-    "DoD" = "DATE",
-    "DoR" = "DATE",
-    "DoB" = "DATE",
-    "age" = "INTEGER",
-    "location_code" = "TEXT"
-  ),
-  db_load_folder = "/xtmp/",
-  keys =  c(
-    "uuid"
-  )
-)

@@ -1,4 +1,10 @@
 set_config <- function() {
+  set_computer_name()
+  set_computer_type()
+  set_border()
+
+  # set DB
+
   config$db_config <- list(
     driver = Sys.getenv("DB_DRIVER", "MySQL"),
     server = Sys.getenv("DB_SERVER", "db"),
@@ -17,6 +23,94 @@ set_config <- function() {
     "65+" = c(65:105)
   )
   
+
+  # set schema
+
+  config$schema <- list(
+    datar_normomo = fd::schema$new(
+      db_config = config$db_config,
+      db_table = "datar_normomo",
+      db_field_types =  c(
+        "uuid" = "TEXT",
+        "DoD" = "DATE",
+        "DoR" = "DATE",
+        "DoB" = "DATE",
+        "age" = "INTEGER",
+        "location_code" = "TEXT"
+      ),
+      db_load_folder = "/xtmp/",
+      keys =  c(
+        "uuid"
+      )
+    ),
+    results_normomo = fd::schema$new(
+      db_config = config$db_config,
+      db_table = "results_normomo_standard",
+      db_field_types =  c(
+        "location_code" = "TEXT",
+        "age" = "TEXT",
+        "date" = "DATE",
+        "wk" = "INTEGER",
+        "yrwk" = "TEXT",
+        "YoDi" = "INTEGER",
+        "WoDi" = "INTEGER",
+        "Pnb" = "DOUBLE",
+        "nb" = "DOUBLE",
+        "nbc" = "DOUBLE",
+        "UPIb2" = "DOUBLE",
+        "UPIb4" = "DOUBLE",
+        "UPIc" = "DOUBLE",
+        "LPIc" = "DOUBLE",
+        "UCIc" = "DOUBLE",
+        "LCIc" = "DOUBLE",
+        "zscore" = "DOUBLE",
+        "excess" = "DOUBLE",
+        "thresholdp_0" = "DOUBLE",
+        "thresholdp_1" = "DOUBLE",
+        "thresholdp_2" = "DOUBLE",
+        "excessp" = "DOUBLE",
+        "status" = "TEXT"
+      ),
+      keys = c(
+        "location_code",
+        "age",
+        "yrwk"
+      ),
+      db_load_folder = "/xtmp/",
+      check_fields_match = TRUE
+    ),
+    msis_data <- fd::schema$new(
+      db_config = config$db_config,
+      db_table = "data_msis",
+      db_field_types =  c(
+        "tag_outcome" = "TEXT",
+        "location_code" = "TEXT",
+        "granularity_time" = "TEXT",
+        "granularity_geo" = "TEXT",
+        "border" = "INTEGER",
+        "age" = "TEXT",
+        "sex" = "TEXT",
+        "date" = "DATE",
+        "season" = "TEXT",
+        "yrwk" = "TEXT",
+        "year" = "INTEGER",
+        "week" = "INTEGER",
+        "month" = "TEXT",
+        "n" = "INTEGER"
+      ),
+      db_load_folder = "/xtmp/",
+      keys =  c(
+        "tag_outcome",
+        "location_code",
+        "year",
+        "date"
+      )
+    )
+  )
+  for(i in config$schema){
+    i$db_connect()
+  }
+
   config$tasks <- list(
     data_normomo = list(
       task_name = "data_normomo",
@@ -128,4 +222,61 @@ set_config <- function() {
     )
   )
 
+  config$tasks <- TaskManager$new()
+  config$tasks$task_add(
+    task_name = "data_normomo",
+    type = "data",
+    r6= "DataNormomo"
+  )
+
+  config$tasks$task_add(
+    task_name = "analysis_normomo",
+    type = "analysis",
+    r6 = "AnalysisNormomo",
+    fn_plan = analysis_normomo_plan,
+    schema = c("output"="results_normomo")
+  )
+
+}
+
+
+set_computer_name <- function() {
+  if (file.exists("/tmp/computer")) {
+    con <- file("/tmp/computer", "r")
+    name_computer <- readLines(con, n = 1)
+    close(con)
+  } else {
+    name_computer <- "NO_NAME_FOUND"
+  }
+  Sys.setenv(COMPUTER = name_computer)
+  config$name_computer <- name_computer
+}
+
+set_computer_type <- function() {
+  if (config$name_computer %in% config$name_production) {
+    config$is_production <- TRUE
+  } else if (config$name_computer %in% config$name_testing) {
+    config$is_testing <- TRUE
+  } else {
+    config$is_dev <- TRUE
+  }
+}
+
+set_db <- function() {
+  config$db_config <- list(
+    driver = Sys.getenv("DB_DRIVER", "MySQL"),
+    server = Sys.getenv("DB_SERVER", "db"),
+    port = as.integer(Sys.getenv("DB_PORT", 3306)),
+    user = Sys.getenv("DB_USER", "root"),
+    password = Sys.getenv("DB_PASSWORD", "example"),
+    db = Sys.getenv("DB_DB", "sykdomspuls")
+  )
+}
+
+set_border <- function() {
+  if (config$is_production) {
+    config$border <- 2020
+  } else {
+    config$border <- 2020
+  }
 }

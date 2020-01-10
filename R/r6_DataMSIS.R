@@ -171,7 +171,7 @@ DataMSIS <- R6::R6Class(
       with_loc[, age:="Totalt"]
       with_loc[, sex:="Totalt"]
       with_loc[, year:=lubridate::year(date)]
-      msis_data_schema$db_connect(config$db_config)
+      config$schema$msis_data$db_connect(config$db_config)
       out_data <- with_loc[, .(tag_outcome,
                                location_code,
                                granularity_time,
@@ -183,37 +183,12 @@ DataMSIS <- R6::R6Class(
                                sex,
                                date,
                                n)]
-      msis_data_schema$db_drop_all_rows()
-      msis_data_schema$db_load_data_infile(out_data)
+      config$schema$msis_data$db_drop_all_rows()
+      config$schema$msis_data$db_load_data_infile(out_data)
     }
   )
 )
 
-msis_data_schema <- fd::schema$new(
-    db_table = "data_msis",
-    db_field_types =  c(
-      "tag_outcome" = "TEXT",
-      "location_code" = "TEXT",
-      "granularity_time" = "TEXT",
-      "granularity_geo" = "TEXT",
-      "border" = "INTEGER",
-      "age" = "TEXT",
-      "sex" = "TEXT",
-      "date" = "DATE",
-      "season" = "TEXT",
-      "yrwk" = "TEXT",
-      "year" = "INTEGER",
-      "week" = "INTEGER",
-      "month" = "TEXT",
-      "n" = "INTEGER"
-    ),
-    db_load_folder = "/xtmp/",
-    keys =  c(
-      "tag_outcome",
-      "location_code",
-      "year",
-      "date"
-    )
-)
+
 
 
