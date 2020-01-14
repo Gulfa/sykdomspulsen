@@ -171,7 +171,7 @@ CleanData <- function(d,
   dates[, datex := NULL]
   #dates[, yrwk := NULL]
   data <- merge(data, dates, by = "date")
-  
+
   # KOMMUNE MERGING
   data <-
     merge(data,
@@ -279,7 +279,7 @@ CleanData <- function(d,
   fylke[, granularityGeo := "county"]
   fylke[, location:=county]
   fylke[, county:= NULL]
-  
+
   # create national
   norge <- data[, .(
     HelligdagIndikator = mean(HelligdagIndikator),
@@ -322,7 +322,7 @@ CleanData <- function(d,
   ## data[, year := fhi::isoyear_n(date)]
   ## data[, week := fhi::isoweek_n(date)]
   ## data[, season := fhi::season(yrwk)]
-  
+
   ## if (!ValidateDataClean(data)) {
   ##   fd::msg("Clean data not validated", type = "err")
   ## }
@@ -353,11 +353,11 @@ IdentifyDatasets <-
 #'
 #' Get and clean from file
 #'
-#' 
+#'
 #' @import data.table
 #'
 #' @export
-data_NorSySS <- function(data, argset, schema){
+data_norsyss <- function(data, argset, schema){
   syndromes <- argset$syndromes
   files <- IdentifyDatasets()
   if (!fd::config$is_dev) {
@@ -371,10 +371,10 @@ data_NorSySS <- function(data, argset, schema){
     fd::msg(sprintf("Unstable file %s", files$raw))
     return(FALSE)
   }
-  
+
   fd::msg(sprintf("Cleaning file %s", files$raw))
   #EmailNotificationOfNewData(files$id)
-  
+
   d <- fread(fd::path("data_raw", files$raw, package="sykdomspuls"))
   d[, date := data.table::as.IDate(date)]
   d[, respiratory := NULL]
@@ -382,8 +382,8 @@ data_NorSySS <- function(data, argset, schema){
   for (i in 1:nrow(syndromes)) {
     conf <- syndromes[i]
     fd::msg(sprintf("Processing %s/%s: %s", i, nrow(syndromes), conf$tag))
-    
-    
+
+
     res <- CleanData(
       d = copy(d[Kontaktype %in% conf$contactType[[1]]]),
       syndrome = conf$syndrome

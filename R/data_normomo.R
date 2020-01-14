@@ -1,4 +1,4 @@
-data_normomo_get <- function(){
+data_normomo_internal <- function(){
   if(config$is_production){
     data_grab <- glue::glue(
       'get -r "ut" /data_raw/normomo/\n',
@@ -71,14 +71,17 @@ data_normomo_get <- function(){
 #' Get and clean NorMOMO data
 #'
 #'  @import data.table
-#' 
+#'
 #' @export
-data_normomo <- function(data, arg, schema){
-  d <- data_normomo_get()
-  print(d)
-  drop_table(config$schema$datar_normomo$db_table)
-  config$schema$datar_normomo$db_connect()
-  config$schema$datar_normomo$db_upsert_load_data_infile(d)
+data_normomo <- function(data, argset, schema){
+  # data <- tm_shortcut_data("data_normomo")
+  # argset <- tm_shortcut_argset("data_normomo")
+  # schema <- tm_shortcut_schema("data_normomo")
+
+  d <- data_normomo_internal()
+  drop_table(schema$output$db_table)
+  schema$output$db_connect()
+  schema$output$db_upsert_load_data_infile(d)
 }
 
 

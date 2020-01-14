@@ -18,15 +18,15 @@ An R6 Action class contains a function called 'run' that takes three arguments:
 An action is (note: we dont explicitly create these):
 - one R6 Action class
 - A plnr::Plan that provide
-  a) data (from the plan -- `data_get`)
-  b) arguments (from the plan -- `argset_get`)
+  a) data (from the plan -- `get_data`)
+  b) arguments (from the plan -- `get_argset`)
 to the R6 action class
 
 A task is:
 - one R6 Action class
 - A plnr::Plan that provide
-  a) data (from the plan -- `data_get`)
-  b) arguments (from the plan -- `argset_get`)
+  a) data (from the plan -- `get_data`)
+  b) arguments (from the plan -- `get_argset`)
 to the R6 action class
 
 A TaskManager is:

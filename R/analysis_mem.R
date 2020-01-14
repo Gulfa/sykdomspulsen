@@ -27,10 +27,10 @@ run_mem <- function(input_data, conf, mem_schema, mem_limits_schema, source) {
            "sex",
            "border", "yrwk", "season", "year", "week")
     ]
- 
+
     data[, denominator:=get(conf$denominator)]
 
-    
+
     mem_df <- prepare_data_frame(data, mult_factor = conf$multiplicative_factor)
     mem_results <- run_mem_model(mem_df, conf)
     mem_results_db <- mem_results
@@ -125,7 +125,7 @@ run_mem_model <- function(data, conf) {
 
 
 
-#' Analisis_MEM
+#' analysis_mem
 #'
 #' Run mem analysis
 #'

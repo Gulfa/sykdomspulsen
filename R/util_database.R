@@ -138,6 +138,7 @@ upsert_load_data_infile <- function(conn = NULL, db_config = NULL, table, dt, fi
   return(FALSE)
 }
 
+#setGeneric("create_table")
 create_table <- function(conn, table, fields) {
   fields_new <- fields
   if(inherits(conn,"MySQL")){
@@ -298,7 +299,7 @@ schema <- R6Class("schema",
     },
     db_connect = function(db_config = self$db_config) {
       self$conn <- get_db_connection(db_config=db_config)
-      fd:::use_db(self$conn, db_config$db)
+      use_db(self$conn, db_config$db)
       self$db_create_table()
     },
     db_disconnect = function() {

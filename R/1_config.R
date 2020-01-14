@@ -2,17 +2,8 @@ set_config <- function() {
   set_computer_name()
   set_computer_type()
   set_border()
+  set_db()
 
-  # set DB
-
-  config$db_config <- list(
-    driver = Sys.getenv("DB_DRIVER", "MySQL"),
-    server = Sys.getenv("DB_SERVER", "db"),
-    port = as.integer(Sys.getenv("DB_PORT", 3306)),
-    user = Sys.getenv("DB_USER", "root"),
-    password = Sys.getenv("DB_PASSWORD", "example"),
-    db = Sys.getenv("DB_DB", "sykdomspuls")
-  )
   config$AGES <- list(
     "Totalt" = c(0:105),
     "0-4" = c(0:4),
@@ -22,12 +13,10 @@ set_config <- function() {
     "30-64" = c(30:64),
     "65+" = c(65:105)
   )
-  
 
   # set schema
-
   config$schema <- list(
-    datar_normomo = fd::schema$new(
+    datar_normomo = schema$new(
       db_config = config$db_config,
       db_table = "datar_normomo",
       db_field_types =  c(
@@ -43,9 +32,9 @@ set_config <- function() {
         "uuid"
       )
     ),
-    results_normomo = fd::schema$new(
+    results_normomo = schema$new(
       db_config = config$db_config,
-      db_table = "results_normomo_standard",
+      db_table = "normomo_standard_results",
       db_field_types =  c(
         "location_code" = "TEXT",
         "age" = "TEXT",
@@ -79,7 +68,7 @@ set_config <- function() {
       db_load_folder = "/xtmp/",
       check_fields_match = TRUE
     ),
-   data_msis = fd::schema$new(
+   data_msis = schema$new(
       db_config = config$db_config,
       db_table = "data_msis",
       db_field_types =  c(
@@ -106,7 +95,7 @@ set_config <- function() {
         "date"
       )
     ),
-    data_norsyss = fd::schema$new(
+    data_norsyss = schema$new(
       db_table = "data_norsyss",
       db_config = config$db_config,
       db_field_types =  c(
@@ -128,7 +117,6 @@ set_config <- function() {
         "pop" = "INTEGER",
         "consult_with_influenza" = "INTEGER",
         "consult_without_influenza" = "INTEGER"
-        
       ),
       db_load_folder = "/xtmp/",
       keys =  c(
@@ -139,8 +127,8 @@ set_config <- function() {
         "age"
       )
     ),
-   results_simple = fd::schema$new(
-     db_table = "results_simple",
+   reuslts_simple = schema$new(
+     db_table = "reuslts_simple",
      db_config = config$db_config,
      db_field_types =  c(
        "tag_outcome" = "TEXT",
@@ -170,8 +158,8 @@ set_config <- function() {
        "date"
      )
    ),
-   results_mem = fd::schema$new(
-     db_table = "results_mem",
+   mem_results = schema$new(
+     db_table = "mem_results",
      db_config = config$db_config,
      db_field_types =  c(
        "tag_outcome" = "TEXT",
@@ -204,8 +192,8 @@ set_config <- function() {
        "age"
      )
    ),
-   results_mem_limits = fd::schema$new(
-     db_table = "results_mem_limits",
+   mem_limits_results = schema$new(
+     db_table = "mem_limits_results",
      db_config = config$db_config,
      db_field_types = list(
        "season" = "TEXT",
@@ -221,29 +209,29 @@ set_config <- function() {
      keys = c("season", "tag_outcome", "age", "location_code")
    )
   )
-  
+
   for(i in config$schema){
     i$db_connect()
   }
 
   config$tasks <- TaskManager$new()
-  config$tasks$task_add(
+  config$tasks$add_task(
     task_from_config(list(
-      task_name = "data_normomo",
+      name = "data_normomo",
       type = "data",
       action="data_normomo",
       schema=list(output=config$schema$datar_normomo)
     )
     )
   )
-  config$tasks$task_add(
+  config$tasks$add_task(
     task_from_config(
       list(
-        task_name = "norsyss_mem_influensa",
+        name = "norsyss_mem_influensa",
         db_table = "data_norsyss",
         type = "analysis",
-        dependencies = c("norsyss_data"),
-        action = "analysis_mem",
+        dependencies = c("data_norsyss"),
+        action = "mem_analysis",
         filter = "(granularity_geo=='county' | granularity_geo=='norge') & tag_outcome=='influensa'",
         for_each=list("location_code"="all"),
         schema=list(output=config$schema$results_mem,
@@ -258,13 +246,13 @@ set_config <- function() {
       )
     )
   )
-  config$tasks$task_add(
+  config$tasks$add_task(
     task_from_config(
       list(
-        task_name = "norsyss_mem_influensa_all",
+        name = "norsyss_mem_influensa_all",
         db_table = "data_norsyss",
         type = "analysis",
-        dependencies = c("norsyss_data"),
+        dependencies = c("data_norsyss"),
         action = "analysis_mem",
         filter = "(granularity_geo=='county' | granularity_geo=='norge') & tag_outcome=='influensa_all'",
         for_each=list("location_code"="all"),
@@ -283,14 +271,14 @@ set_config <- function() {
       )
     )
   )
-  config$tasks$task_add(
+  config$tasks$add_task(
     task_from_config(
       list(
-        task_name = "simple_analysis_msis",
+        name = "simple_analysis_msis",
         type = "analysis",
         db_table = "data_msis",
         action = "analysis_simple",
-        dependencies = c("msis_data"),
+        dependencies = c("data_msis"),
         schema=list(output=config$schema$results_simple),
         for_each=list("location_code"="all", "tag_outcome"=c("Kikoste", "Campylobacteriose")),
         args = list(
@@ -300,16 +288,16 @@ set_config <- function() {
       )
     )
   )
-  config$tasks$task_add(
+  config$tasks$add_task(
     task_from_config(
       list(
-        task_name = "ui_threshold_plot_msis",
+        name = "ui_threshold_plot_msis",
         type = "ui",
         action = "UI_create_threshold_plot",
-        db_table = "results_simple",
+        db_table = "reuslts_simple",
         schema=NULL,
         for_each=list("location_code"="all", "tag_outcome"=c("Kikoste", "Campylobacteriose")),
-        dependencies = c("msis_simple_analysis"),
+        dependencies = c("simple_analysis_msis"),
         args = list(
           filename = "{location_code}.png",
           folder = " {tag_outcome}/{today}"
@@ -318,28 +306,28 @@ set_config <- function() {
       )
     )
   )
-  config$tasks$task_add(
+  config$tasks$add_task(
     task_from_config(
       list(
-        task_name = "data_msis",
+        name = "data_msis",
         type = "data",
-        action = "data_MSIS",
+        action = "data_msis",
         schema=list(output=config$schema$data_msis),
         args = list(
           start_year = 2008,
           end_year = 2019
       )
       )
-      
+
     )
   )
 
-  config$tasks$task_add(
+  config$tasks$add_task(
     task_from_config(
       list(
-        task_name = "data_norsyss",
+        name = "data_norsyss",
         type = "data",
-        action = "data_NorSySS",
+        action = "data_norsyss",
         schema=list(output=config$schema$data_norsyss),
         args = list(
           syndromes = rbind(
@@ -363,11 +351,11 @@ set_config <- function() {
       )
     )
   )
-  config$tasks$task_add(
+  config$tasks$add_task(
     Task$new(
-      task_name = "analysis_normomo",
+      name = "analysis_normomo",
       type = "analysis",
-      list_plan = analysis_normomo_plan(),
+      plans = analysis_normomo_plans(),
       schema = c("output"=config$schema$results_normomo)
     )
   )

@@ -14,7 +14,7 @@ analysis_simple <- function(data, argset, schema){
   if(nrow(data) > 0){
     max_year <- max(data[, year])
     min_year <- min(data[, year])
-    
+
     for(x_year in (min_year+5):max_year){
       past <- data[year < x_year & year >= (x_year - 5) ,
                    .(n_expected=mean(n), n_std=sd(n)), by=.(get(group_by))]

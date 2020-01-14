@@ -1,16 +1,13 @@
-#' analyse_simple
+#' analysis_normomo
 #'
 #' Get and clean MSIS data from msis.no
 #'
 #' @export
 analysis_normomo <-  function(data, argset, schema){
-  # data <- config$tasks$task_get("analysis_normomo")$list_plan[[1]]$data_get()
-  # argset <- config$tasks$task_get("analysis_normomo")$list_plan[[1]]$argset_get(1)
-  # schema <- config$tasks$task_get("analysis_normomo")$schema
-  
   # data <- tm_shortcut_data("analysis_normomo", index_plan=1)
   # argset <- tm_shortcut_argset("analysis_normomo", index_plan=1, index_argset = 1)
   # schema <- tm_shortcut_schema("analysis_normomo")
+
   d <- as.data.frame(data$raw[fhi::isoyear_n(DoR)<=argset$year_end])
   MOMO::SetOpts(
     DoA = max(d$DoR),
@@ -36,7 +33,7 @@ analysis_normomo <-  function(data, argset, schema){
   )
 
   MOMO::RunMoMo()
-  
+
   data_to_save <- rbindlist(MOMO::dataExport$toSave, fill = TRUE)
   data_clean <- clean_exported_momo_data(
     data_to_save,
@@ -53,96 +50,16 @@ analysis_normomo_hfile <- function() {
   return(as.data.frame(hfile))
 }
 
-analysis_normomo_plan <- function(config){
-  location_code <- c("norway",unique(fd::norway_locations()$county_code))
-  p_data <- data.table(location_code = location_code)
-  p_data[,filter1 := glue::glue(
-    "location_code=='{location_code}'",
-    location_code=location_code
-  )]
-  p_data[1, filter1:=NA]
-  p_data[, data_uuid := 1:.N]
-  p_data[, data1 := "deaths_raw"]
-  p_data[, db_table1 := "datar_normomo"]
-
-  p_analysis <- data.table(expand.grid(
-    location_code = p_data$location_code,
-    year_end = 2012:lubridate::year(lubridate::today()),
-    stringsAsFactors = F
-  ))
-
-  p_analysis <- merge(
-    p_analysis,
-    p_data,
-    by="location_code"
-  )
-  p_analysis[, filter1:=NULL]
-  p_analysis[, db_table1:=NULL]
-
-  setorder(p_analysis, location_code, -year_end)
-
-  plan <- list()
-  for(i in 1:nrow(p_data)){
-    pd <- p_data[i]
-    pa <- p_analysis[data_uuid == pd$data_uuid]
-    plan_data <- list()
-    plan_data[[1]] <- list(
-      data = pd$data1,
-      db_table = pd$db_table1,
-      filter = pd$filter1
-    )
-
-    if(pd$location_code=="norway"){
-      momo_groups <- list(
-        "0to4" =  "age >= 0 & age <=4",
-        "5to14" = "age >= 5 & age <=14",
-        "15to64" = "age >= 15 & age <=64",
-        "65P" = "age >= 65 | is.na(age)",
-        "Total" = "age >= 0 | is.na(age)"
-      )
-      momo_models <- c(
-          "0to4" = "LINE",
-          "5to14" = "LINE",
-          "15to64" = "LINE_SIN",
-          "65P" = "LINE_SIN",
-          "Total" = "LINE_SIN"
-        )
-    } else {
-      momo_groups <- list(
-        "Total" = "age >= 0 | is.na(age)"
-      )
-      momo_models <- c(
-        "Total" = "LINE_SIN"
-      )
-    }
-
-    plan_analysis <- vector("list", length = nrow(pa))
-    for(j in 1:nrow(pa)){
-      plan_analysis[[j]] <- as.list(pa[j,])
-      plan_analysis[[j]]$momo_groups <- momo_groups
-      plan_analysis[[j]]$momo_models <- momo_models
-    }
-
-    plan[[i]] <- list(
-      plan_data= plan_data,
-      plan_analysis = plan_analysis
-    )
-  }
-  plan
-
-  return(plan)
-}
-
-analysis_normomo_plan <- function(config){
+analysis_normomo_plans <- function(config){
   location_code <- c("norway",unique(fd::norway_locations()$county_code))
   list_plan <- list()
   list_plan[[length(list_plan)+1]] <- plnr::Plan$new()
-  list_plan[[length(list_plan)]]$data_add(name = "raw", fn=function(){
+  list_plan[[length(list_plan)]]$add_data(name = "raw", fn=function(){
     fd::tbl("datar_normomo") %>% dplyr::collect() %>% fd::latin1_to_utf8()
   })
   for(i in 2012:lubridate::year(lubridate::today())){
-    list_plan[[length(list_plan)]]$analysis_add(
-      analysis_normomo,
+    list_plan[[length(list_plan)]]$add_analysis(
+      fn = analysis_normomo,
       location_code = "norway",
       year_end = i,
       momo_groups = list(
@@ -163,12 +80,12 @@ analysis_normomo_plan <- function(config){
   }
   for(j in unique(fd::norway_locations()$county_code)){
     list_plan[[length(list_plan)+1]] <- plnr::Plan$new()
-    list_plan[[length(list_plan)]]$data_add(name = "raw", fn=function(){
+    list_plan[[length(list_plan)]]$add_data(name = "raw", fn=function(){
       fd::tbl("datar_normomo") %>% dplyr::collect() %>% fd::latin1_to_utf8()
     })
     for(i in 2012:lubridate::year(lubridate::today())){
-      list_plan[[length(list_plan)]]$analysis_add(
-        analysis_normomo,
+      list_plan[[length(list_plan)]]$add_analysis(
+        fn = analysis_normomo,
         location_code = j,
         year_end = i,
         momo_groups = list(
