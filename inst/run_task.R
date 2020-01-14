@@ -5,4 +5,6 @@ devtools::load_all()
 
 args <- commandArgs(trailingOnly = TRUE)
 
-run_task(args[1], log=FALSE)
+
+print(names(config$tasks$list_task))
+config$tasks$task_run(args[1], log=FALSE)

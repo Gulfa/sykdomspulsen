@@ -3,57 +3,48 @@
 #' Get and clean MSIS data from msis.no
 #'
 #' @export
-AnalysisNormomo <-R6::R6Class(
-  "AnalysisNormomo",
-  inherit = ActionBase,
-  portable = FALSE,
-  cloneable = FALSE,
-  list(
-    run = function(data, argset, schema){
-      # data <- config$tasks$task_get("analysis_normomo")$list_plan[[1]]$data_get()
-      # argset <- config$tasks$task_get("analysis_normomo")$list_plan[[1]]$argset_get(1)
-      # schema <- config$tasks$task_get("analysis_normomo")$schema
-
-      # data <- tm_shortcut_data("analysis_normomo", index_plan=1)
-      # argset <- tm_shortcut_argset("analysis_normomo", index_plan=1, index_argset = 1)
-      # schema <- tm_shortcut_schema("analysis_normomo")
-      d <- as.data.frame(data$raw[fhi::isoyear_n(DoR)<=argset$year_end])
-
-      MOMO::SetOpts(
-        DoA = max(d$DoR),
-        DoPR = as.Date("2012-1-1"),
-        WStart = 1,
-        WEnd = 52,
-        country = arg$location_code,
-        source = "FHI",
-        MDATA = d,
-        HDATA = analysis_normomo_hfile(),
-        INPUTDIR = tempdir(),
-        WDIR = tempdir(),
-        back = 7,
-        WWW = 290,
-        Ysum = arg$year_end,
-        Wsum = 40,
-        plotGraphs = FALSE,
-        delayVersion = "richard",
-        delayFunction = NULL,
-        MOMOgroups = arg$momo_groups,
-        MOMOmodels = arg$momo_models,
-        verbose = FALSE
-      )
-
-      MOMO::RunMoMo()
-
-      data_to_save <- rbindlist(MOMO::dataExport$toSave, fill = TRUE)
-      data_clean <- clean_exported_momo_data(
-        data_to_save,
-        location_code = arg$location_code
-        )
-
-      schema$output$db_upsert_load_data_infile(data_clean)
-    }
+analysis_normomo <-  function(data, argset, schema){
+  # data <- config$tasks$task_get("analysis_normomo")$list_plan[[1]]$data_get()
+  # argset <- config$tasks$task_get("analysis_normomo")$list_plan[[1]]$argset_get(1)
+  # schema <- config$tasks$task_get("analysis_normomo")$schema
+  
+  # data <- tm_shortcut_data("analysis_normomo", index_plan=1)
+  # argset <- tm_shortcut_argset("analysis_normomo", index_plan=1, index_argset = 1)
+  # schema <- tm_shortcut_schema("analysis_normomo")
+  d <- as.data.frame(data$raw[fhi::isoyear_n(DoR)<=argset$year_end])
+  MOMO::SetOpts(
+    DoA = max(d$DoR),
+    DoPR = as.Date("2012-1-1"),
+    WStart = 1,
+    WEnd = 52,
+    country = argset$location_code,
+    source = "FHI",
+    MDATA = d,
+    HDATA = analysis_normomo_hfile(),
+    INPUTDIR = tempdir(),
+    WDIR = tempdir(),
+    back = 7,
+    WWW = 290,
+    Ysum = argset$year_end,
+    Wsum = 40,
+    plotGraphs = FALSE,
+    delayVersion = "richard",
+    delayFunction = NULL,
+    MOMOgroups = argset$momo_groups,
+    MOMOmodels = argset$momo_models,
+    verbose = FALSE
   )
-)
+
+  MOMO::RunMoMo()
+  
+  data_to_save <- rbindlist(MOMO::dataExport$toSave, fill = TRUE)
+  data_clean <- clean_exported_momo_data(
+    data_to_save,
+    location_code = argset$location_code
+  )
+  schema$output$db_upsert_load_data_infile(data_clean)
+}
+
 
 analysis_normomo_hfile <- function() {
   hfile <- fhidata::norway_dates_holidays[is_holiday == TRUE]
@@ -150,7 +141,8 @@ analysis_normomo_plan <- function(config){
     fd::tbl("datar_normomo") %>% dplyr::collect() %>% fd::latin1_to_utf8()
   })
   for(i in 2012:lubridate::year(lubridate::today())){
-    list_plan[[length(list_plan)]]$argset_add(
+    list_plan[[length(list_plan)]]$analysis_add(
+      analysis_normomo,
       location_code = "norway",
       year_end = i,
       momo_groups = list(
@@ -175,7 +167,8 @@ analysis_normomo_plan <- function(config){
       fd::tbl("datar_normomo") %>% dplyr::collect() %>% fd::latin1_to_utf8()
     })
     for(i in 2012:lubridate::year(lubridate::today())){
-      list_plan[[length(list_plan)]]$argset_add(
+      list_plan[[length(list_plan)]]$analysis_add(
+        analysis_normomo,
         location_code = j,
         year_end = i,
         momo_groups = list(

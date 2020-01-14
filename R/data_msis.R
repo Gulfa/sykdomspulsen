@@ -137,57 +137,50 @@ clean_data <- function(data){
 #' @import rvest
 #'
 #' @export
-DataMSIS <- R6::R6Class(
-  "DataMSIS",
-  inherit = TaskBase,
-  portable = FALSE,
-  cloneable = FALSE,
-  list(
-    run = function(data, analysis){
-      # arguments start
-      start_year <- analysis$start_year
-      end_year <- analysis$end_year
-      # arguments end
-      municips <- get_county_municip()[1:10]
-      data_list <- list()
-      i = 1
-      for(m in municips){
-        for(year in start_year:end_year){
-          new_data <- get_data(year, as.integer(m["county_code"]), as.integer(m["municip_code"]))
+data_MSIS <- function(data, argset, schema){
+  # arguments start
+  print(argset)
+  start_year <- argset$start_year
+  end_year <- argset$end_year
+  # arguments end
+  municips <- get_county_municip()[1:10]
+  data_list <- list()
+  i = 1
+  for(m in municips){
+    for(year in start_year:end_year){
+      new_data <- get_data(year, as.integer(m["county_code"]), as.integer(m["municip_code"]))
       new_data[,county:=m["county"]]
-          new_data[,municip:=m["municip"]]
-          data_list[[i]] <- new_data
-          i = i +1
-        }
-      }
-      data <- rbindlist(data_list)
-      cleaned_data <- clean_data(data)
-      with_loc <- cleaned_data[fd::norway_locations()[, .(location_code=municip_code, municip_name)], on=c("municip"="municip_name")]
-      with_loc[, tag_outcome :=Sykdom]
-      with_loc <- with_loc[!is.na(tag_outcome),]
-      with_loc[, granularity_time:="month"]
-      with_loc[, granularity_geo:="municip"]
-      with_loc[, border:=fd::config$border]
-      with_loc[, age:="Totalt"]
-      with_loc[, sex:="Totalt"]
-      with_loc[, year:=lubridate::year(date)]
-      config$schema$msis_data$db_connect(config$db_config)
-      out_data <- with_loc[, .(tag_outcome,
-                               location_code,
-                               granularity_time,
-                               granularity_geo,
-                               border,
-                               month,
-                               year,
-                               age,
-                               sex,
-                               date,
-                               n)]
-      config$schema$msis_data$db_drop_all_rows()
-      config$schema$msis_data$db_load_data_infile(out_data)
+      new_data[,municip:=m["municip"]]
+      data_list[[i]] <- new_data
+      i = i +1
     }
-  )
-)
+  }
+  data <- rbindlist(data_list)
+  cleaned_data <- clean_data(data)
+  with_loc <- cleaned_data[fd::norway_locations()[, .(location_code=municip_code, municip_name)], on=c("municip"="municip_name")]
+  with_loc[, tag_outcome :=Sykdom]
+  with_loc <- with_loc[!is.na(tag_outcome),]
+  with_loc[, granularity_time:="month"]
+  with_loc[, granularity_geo:="municip"]
+  with_loc[, border:=fd::config$border]
+  with_loc[, age:="Totalt"]
+  with_loc[, sex:="Totalt"]
+  with_loc[, year:=lubridate::year(date)]
+  out_data <- with_loc[, .(tag_outcome,
+                           location_code,
+                           granularity_time,
+                           granularity_geo,
+                           border,
+                           month,
+                           year,
+                           age,
+                           sex,
+                           date,
+                           n)]
+  schema$output$db_drop_all_rows()
+  schema$output$db_load_data_infile(out_data)
+}
+
 
 
 
