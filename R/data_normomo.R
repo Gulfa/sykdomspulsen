@@ -66,31 +66,20 @@ data_normomo_get <- function(){
 
 }
 
-#' get_MSIS_data
+#' DataNormomo
 #'
-#' Get and clean MSIS data from msis.no
+#' Get and clean NorMOMO data
 #'
-#' @import httr
-#' @import data.table
-#' @import rvest
-#'
+#'  @import data.table
+#' 
 #' @export
-DataNormomo <- R6::R6Class(
-  "DataNormomo",
-  inherit = ActionBase,
-  portable = FALSE,
-  cloneable = FALSE,
-  list(
-    run = function(data, arg){
-
-      d <- data_normomo_get()
-
-      drop_table(config$schema$datar_normomo$db_table)
-      config$schema$datar_normomo$db_connect()
-      config$schema$datar_normomo$db_upsert_load_data_infile(d)
-    }
-  )
-)
+data_normomo <- function(data, arg, schema){
+  d <- data_normomo_get()
+  print(d)
+  drop_table(config$schema$datar_normomo$db_table)
+  config$schema$datar_normomo$db_connect()
+  config$schema$datar_normomo$db_upsert_load_data_infile(d)
+}
 
 
 

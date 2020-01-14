@@ -158,7 +158,10 @@ CleanData <- function(d,
   dates <- unique(data[, "date", with = F])
   dates[, datex := date]
   dates[, yrwk := format.Date(datex, "%G-%V")] # Week-based year, instead of normal year (%Y)
+  dates[, week := as.numeric(format.Date(datex, "%V"))]
   dates[, year := as.numeric(format.Date(date, "%G"))]
+  dates[, month := as.numeric(format.Date(date, "%m"))]
+  dates[, season := fhi::season(yrwk)]
   dates <- dates[year >= 2006]
 
   # delete last day of data if it is not a sunday
@@ -166,11 +169,10 @@ CleanData <- function(d,
     dates <- dates[yrwk != max(yrwk)]
   }
   dates[, datex := NULL]
-  dates[, yrwk := NULL]
+  #dates[, yrwk := NULL]
   data <- merge(data, dates, by = "date")
-
+  
   # KOMMUNE MERGING
-  dim(data)
   data <-
     merge(data,
       fd::norway_municip_merging()[, c("municip_code_original", "year", "municip_code_current", "weighting")],
@@ -189,7 +191,7 @@ CleanData <- function(d,
 
   data <- data[!is.na(municip_code_current),
     lapply(.SD, sum),
-    keyby = .(municip_code_current, year, age, date),
+    keyby = .(municip_code_current, year, age, date, week, yrwk, month, season),
     .SDcols = c(syndromeAndConsult)
   ]
 
@@ -231,7 +233,7 @@ CleanData <- function(d,
   data[hellidager, on = "date", HelligdagIndikator := HelligdagIndikator]
   data[is.na(HelligdagIndikator), HelligdagIndikator := FALSE]
 
-  data[, year := NULL]
+  #data[, year := NULL]
 
   setnames(data, syndrome, "n")
 
@@ -241,7 +243,6 @@ CleanData <- function(d,
   if (!"consult_without_influenza" %in% names(data)) {
     data[, consult_without_influenza := n]
   }
-
   setcolorder(data, unique(
     c(
       "date",
@@ -251,7 +252,12 @@ CleanData <- function(d,
       "n",
       "consult_without_influenza",
       "consult_with_influenza",
-      "pop"
+      "pop",
+      "yrwk",
+      "year",
+      "week",
+      "month",
+      "season"
     )
   ))
 
@@ -268,7 +274,7 @@ CleanData <- function(d,
     consult_without_influenza = sum(consult_without_influenza),
     consult_with_influenza = sum(consult_with_influenza),
     pop = sum(pop)
-  ), keyby = .(county, age, date)]
+  ), keyby = .(county, age, date, year, yrwk, week, month, season)]
 
   fylke[, granularityGeo := "county"]
   fylke[, location:=county]
@@ -281,7 +287,7 @@ CleanData <- function(d,
     consult_without_influenza = sum(consult_without_influenza),
     consult_with_influenza = sum(consult_with_influenza),
     pop = sum(pop)
-  ), keyby = .(age, date)]
+  ), keyby = .(age, date, year, yrwk, week, month, season)]
 
   data[, county:=NULL]
   norge[, location := "norge"]
@@ -291,7 +297,6 @@ CleanData <- function(d,
   setcolorder(data, c("granularityGeo",  "location", "age", "date"))
   setorderv(data, c("granularityGeo", "location", "age", "date"))
   setkey(data, location, age)
-
   setnames(data, c(
     "granularity_geo",
     "location_code",
@@ -302,9 +307,12 @@ CleanData <- function(d,
     "consult_without_influenza",
     "consult_with_influenza",
     "pop",
+    "yrwk",
     "year",
     "week",
-    "wkyr"
+    "month",
+    "season"
+
   ))
 
   data[, sex:="Totalt"]
@@ -349,86 +357,41 @@ IdentifyDatasets <-
 #' @import data.table
 #'
 #' @export
-DataNorSySS <- R6::R6Class(
-  "DataNorSySS",
-  inherit = TaskBase,
-  portable = FALSE,
-  cloneable = FALSE,
-  list(
-    run = function(data, plan_data, analysis){
-      syndromes <- analysis$syndromes
-      files <- IdentifyDatasets()
-      if (!fd::config$is_dev) {
-        files <- files[is.na(isClean)]
-      }
-      if (nrow(files) == 0) {
+data_NorSySS <- function(data, argset, schema){
+  syndromes <- argset$syndromes
+  files <- IdentifyDatasets()
+  if (!fd::config$is_dev) {
+    files <- files[is.na(isClean)]
+  }
+  if (nrow(files) == 0) {
         fd::msg("No new data")
         return(FALSE)
-      }
-      if (!fhi::file_stable(fd::path("data_raw", files$raw, package="sykdomspuls"))) {
-        fd::msg(sprintf("Unstable file %s", files$raw))
-        return(FALSE)
-      }
-
-      fd::msg(sprintf("Cleaning file %s", files$raw))
-      #EmailNotificationOfNewData(files$id)
-
-      d <- fread(fd::path("data_raw", files$raw, package="sykdomspuls"))
-      d[, date := data.table::as.IDate(date)]
-      d[, respiratory := NULL]
-      d[, influensa_all := influensa]
-      norsyss_data_schema$db_connect(config$db_config)
-      norsyss_data_schema$db_drop_all_rows()
-      for (i in 1:nrow(syndromes)) {
-        conf <- syndromes[i]
-        fd::msg(sprintf("Processing %s/%s: %s", i, nrow(syndromes), conf$tag))
-        
-        
-        res <- CleanData(
-          d = copy(d[Kontaktype %in% conf$contactType[[1]]]),
-          syndrome = conf$syndrome
-        )
-        res[, tag_outcome:=conf$tag]
-        print(nrow(res))
-        print(head(res, 40))
-        norsyss_data_schema$db_load_data_infile(res)
-      }
-      fd::msg("New data is now formatted and ready")
-      return(TRUE)
-    }
-  )
-)
-
-norsyss_data_schema <- fd::schema$new(
-    db_table = "data_norsyss",
-    db_field_types =  c(
-      "tag_outcome" = "TEXT",
-      "location_code" = "TEXT",
-      "granularity_time" = "TEXT",
-      "granularity_geo" = "TEXT",
-      "border" = "INTEGER",
-      "holiday" = "DOUBLE",
-      "age" = "TEXT",
-      "sex" = "TEXT",
-      "date" = "DATE",
-      "season" = "TEXT",
-      "yrwk" = "TEXT",
-      "year" = "INTEGER",
-      "week" = "INTEGER",
-      "month" = "TEXT",
-      "n" = "INTEGER",
-      "pop" = "INTEGER",
-      "consult_with_influenza" = "INTEGER",
-      "consult_without_influenza" = "INTEGER"
-      
-    ),
-    db_load_folder = "/xtmp/",
-    keys =  c(
-      "tag_outcome",
-      "location_code",
-      "year",
-      "date",
-      "age"
+  }
+  if (!fhi::file_stable(fd::path("data_raw", files$raw, package="sykdomspuls"))) {
+    fd::msg(sprintf("Unstable file %s", files$raw))
+    return(FALSE)
+  }
+  
+  fd::msg(sprintf("Cleaning file %s", files$raw))
+  #EmailNotificationOfNewData(files$id)
+  
+  d <- fread(fd::path("data_raw", files$raw, package="sykdomspuls"))
+  d[, date := data.table::as.IDate(date)]
+  d[, respiratory := NULL]
+  d[, influensa_all := influensa]
+  for (i in 1:nrow(syndromes)) {
+    conf <- syndromes[i]
+    fd::msg(sprintf("Processing %s/%s: %s", i, nrow(syndromes), conf$tag))
+    
+    
+    res <- CleanData(
+      d = copy(d[Kontaktype %in% conf$contactType[[1]]]),
+      syndrome = conf$syndrome
     )
-)
+    res[, tag_outcome:=conf$tag]
 
+    schema$output$db_upsert_load_data_infile(res)
+  }
+  fd::msg("New data is now formatted and ready")
+  return(TRUE)
+}

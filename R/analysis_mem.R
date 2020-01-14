@@ -13,10 +13,10 @@ run_mem <- function(input_data, conf, mem_schema, mem_limits_schema, source) {
     return_one <- function(x) {
       return(1)
     }
-    data[, yrwk := fhi::isoyearweek(date)]
-    data[, year := fhi::isoyear_n(date)]
-    data[, week := fhi::isoweek_n(date)]
-    data[, season := fhi::season(yrwk)]
+    #data[, yrwk := fhi::isoyearweek(date)]
+    #data[, year := fhi::isoyear_n(date)]
+    #data[, week := fhi::isoweek_n(date)]
+    #data[, season := fhi::season(yrwk)]
     data <- data[, .(
       n = sum(n),
       consult_without_influenza = sum(consult_without_influenza),
@@ -24,7 +24,8 @@ run_mem <- function(input_data, conf, mem_schema, mem_limits_schema, source) {
       pop = sum(pop)
     ),
     by = c("location_code", "tag_outcome", "granularity_time", "granularity_geo",
-           "sex", "month", "border", "yrwk", "season", "year", "week")
+           "sex",
+           "border", "yrwk", "season", "year", "week")
     ]
  
     data[, denominator:=get(conf$denominator)]
@@ -59,13 +60,14 @@ run_mem <- function(input_data, conf, mem_schema, mem_limits_schema, source) {
     data[rate >= medium & rate < high, rate_status := "medium"]
     data[rate >= high & rate < very_high, rate_status := "high"]
     data[rate >= very_high, rate_status := "veryhigh"]
-
+    data[, granularity_time:="week"]
     data[, rate_threshold_0:=low]
     data[, rate_threshold_1:=medium]
     data[, rate_threshold_2:=high]
     data[, rate_threshold_3:=very_high]
     data[, source:=source]
     data[, x := fhi::x(week)]
+   # print(head(data, 40))
     mem_schema$db_upsert_load_data_infile(data)
   }
 }
@@ -128,73 +130,11 @@ run_mem_model <- function(data, conf) {
 #' Run mem analysis
 #'
 #' @export
-AnalysisMEM <-R6::R6Class(
-  "AnalysisMEM",
-  inherit = TaskBase,
-  portable = FALSE,
-  cloneable = FALSE,
-  list(
-    run= function(data, plan_data, plan_analysis){
-      # arguments start
-      conf <- plan_analysis
-      mem_schema$db_connect(config$db_config)
-      mem_schema$db_config <- config$db_config
-#      mem_schema$db_drop_all_rows()
-      mem_limits_schema$db_connect(config$db_config)
-      mem_limits_schema$db_config <- config$db_config
- #     mem_limits_schema$db_drop_all_rows()
-      run_mem(data$data, conf, mem_schema, mem_limits_schema,plan_data[[1]]$db_table)
-    }
-  )
-)
+analysis_mem <-  function(data, argset, schema){
+  # arguments start
+  conf <- argset
+  run_mem(data$data, conf, schema$output, schema$output_limits,argset$source_table)
+}
 
-mem_schema <- fd::schema$new(
-    db_table = "results_mem",
-    db_field_types =  c(
-      "tag_outcome" = "TEXT",
-      "source" = "TEXT",
-      "location_code" = "TEXT",
-      "granularity_time" = "TEXT",
-      "granularity_geo" = "TEXT",
-      "border" = "INTEGER",
-      "age" = "TEXT",
-      "sex" = "TEXT",
-      "date" = "DATE",
-      "season" = "TEXT",
-      "yrwk" = "TEXT",
-      "year" = "INTEGER",
-      "week" = "INTEGER",
-      "month" = "TEXT",
-      "n" = "TEXT",
-      "rate" = "DOUBLE",
-      "rate_threshold_0" = "DOUBLE",
-      "rate_threshold_1" = "DOUBLE",
-      "rate_threshold_2" = "DOUBLE",
-      "rate_threshold_3" = "DOUBLE",
-      "rate_status"= "TEXT"
-    ),
-    db_load_folder = "/xtmp/",
-    keys =  c(
-      "tag_outcome",
-      "location_code",
-      "year",
-      "date",
-      "age"
-    )
-)
 
-mem_limits_schema <- fd::schema$new(
-    db_table = "results_mem_limits",
-    db_field_types = list(
-      "season" = "TEXT",
-      "tag_outcome" = "TEXT",
-      "age" = "TEXT",
-      "location_code" = "TEXT",
-      "rate_threshold_0" = "DOUBLE",
-      "rate_threshold_1" = "DOUBLE",
-      "rate_threshold_2" = "DOUBLE",
-      "rate_threshold_3" = "DOUBLE"
-    ),
-    db_load_folder = "/xtmp/",
-    keys = c("season", "tag_outcome", "age", "location_code")
-)
+

@@ -145,71 +145,30 @@ Task <- R6::R6Class(
       }
     },
   can_run = function(){
+    rundates <- fd::get_rundate()
+    last_run_date <- head(rundates[package == task_name]$date_run, 1)
+    curr_date <- lubridate::today()
+    dependencies <- c()
+    for(dependency in get_list(task_config(task_name), "dependencies",default=c())){
+      dep_run_date <- rundates[package==dependency]
+      if(nrow(dep_run_date) == 0){
+        return(FALSE)
+      }
+      if(length(last_run_date) >0){
+        if(last_run_date >= dep_run_date[1, date_run]){
+          return(FALSE)
+        }
+      }
+    }
+    if(length(last_run_date) == 0){
+      return(TRUE)
+    }
+    if(curr_date <= last_run_date){
+      return(FALSE)
+    }
+    
     return(TRUE)
   }
   )
 )
 
-
-#'
-#'
-#' TaskManager
-#'
-#' An R6 Action class contains a function called 'run' that takes three arguments:
-#' - data (list)
-#' - arg (list)
-#' - schema (list)
-#'
-#' An action is (note: we dont explicitly create these):
-#' - one R6 Action class
-#' - A plnr::Plan that provide
-#'   a) data (from the plan -- `data_get`)
-#'   b) arguments (from the plan -- `argset_get`)
-#' to the R6 action class
-#'
-#' A task is:
-#' - one R6 Action class
-#' - A plnr::Plan that provide
-#'   a) data (from the plan -- `data_get`)
-#'   b) arguments (from the plan -- `argset_get`)
-#' to the R6 action class
-#'
-#' A TaskManager is:
-#' - one R6 Action class
-#' - A list of plnr::Plan's
-#'
-#' @import R6
-#' @export
-TaskManager <- R6::R6Class(
-  "TaskManager",
-  portable = FALSE,
-  cloneable = TRUE,
-  public = list(
-    list_task = list(),
-    initialize = function() {
-      # nothing
-    },
-    task_add = function(task){
-      list_task[[task$task_name]] <<- task
-    },
-    ## list_plan_get = function(task_name){
-    ##   if(is.null(list_task[[task_name]]$list_plan) & is.null(list_task[[task_name]]$fn_plan)){
-    ##     retval <- list(x=1)
-    ##   } else if(!is.null(list_task[[task_name]]$list_plan) & is.null(list_task[[task_name]]$fn_plan)){
-    ##     retval <- list_task[[task_name]]$list_plan
-    ##   } else if(is.null(list_task[[task_name]]$list_plan) & !is.null(list_task[[task_name]]$fn_plan)){
-    ##     retval <- list_task[[task_name]]$fn_plan()
-    ##   }
-    ##   return(retval)
-    ## },
-  
-
-    task_run = function(task_name, log=TRUE){
-      list_task[[task_name]]$run(log)
-    },
-    
-    run = function() {
-      stop("run must be implemented")
-    }
-  )
-)
