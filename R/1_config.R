@@ -158,7 +158,7 @@ set_config <- function() {
        "date"
      )
    ),
-   mem_results = schema$new(
+   results_mem = schema$new(
      db_table = "mem_results",
      db_config = config$db_config,
      db_field_types =  c(
@@ -192,7 +192,7 @@ set_config <- function() {
        "age"
      )
    ),
-   mem_limits_results = schema$new(
+   results_mem_limits = schema$new(
      db_table = "mem_limits_results",
      db_config = config$db_config,
      db_field_types = list(
@@ -231,7 +231,7 @@ set_config <- function() {
         db_table = "data_norsyss",
         type = "analysis",
         dependencies = c("data_norsyss"),
-        action = "mem_analysis",
+        action = "analysis_mem",
         filter = "(granularity_geo=='county' | granularity_geo=='norge') & tag_outcome=='influensa'",
         for_each=list("location_code"="all"),
         schema=list(output=config$schema$results_mem,
@@ -303,6 +303,27 @@ set_config <- function() {
           folder = " {tag_outcome}/{today}"
         ),
         filter = "year > 2010 & source == 'data_msis'"
+      )
+    )
+  )
+  config$tasks$add_task(
+    task_from_config(
+      list(
+        name = "ui_norsyss_mem_influensa",
+        type = "ui",
+        action = "ui_mem_plots",
+        db_table = "results_mem",
+        schema=NULL,
+        for_each=list(tag_outcome=c('influensa')), 
+        dependencies = c("simple_analysis_msis"),
+        args = list(
+          tag="influensa",
+          icpc2="R60",
+          contactType="Legekontakt",
+          folder_name = "mem_influensa",
+          outputs = c("charts", "county_sheet", "region_sheet", "norway_sheet")
+        ),
+        filter = "source=='data_norsyss'"
       )
     )
   )

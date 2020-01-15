@@ -2,7 +2,7 @@
 % Please edit documentation in R/analysis_mem.R
 \name{analysis_mem}
 \alias{analysis_mem}
-\title{Analisis_MEM}
+\title{analysis_mem}
 \usage{
 analysis_mem(data, argset, schema)
 }
