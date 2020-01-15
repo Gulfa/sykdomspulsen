@@ -2,7 +2,7 @@
 % Please edit documentation in R/analysis_normomo.R
 \name{analysis_normomo}
 \alias{analysis_normomo}
-\title{analyse_simple}
+\title{analysis_normomo}
 \usage{
 analysis_normomo(data, argset, schema)
 }
