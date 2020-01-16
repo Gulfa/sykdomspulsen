@@ -218,7 +218,7 @@ set_config <- function() {
        "n_thresholdu1" = "DOUBLE",
        "n_thresholdu2" = "DOUBLE",
        "n_zscore" = "DOUBLE",
-       "n_status" = "TEXT",         
+       "n_status" = "TEXT",
        "cumE1" = "DOUBLE",
        "cumL1" = "DOUBLE",
        "cumU1" = "DOUBLE",
@@ -292,10 +292,10 @@ set_config <- function() {
     )
   )
 
-  
+
   config$tasks$add_task(
     task_from_config(
-      list(
+      conf = list(
         name = "norsyss_qp_gastro",
         db_table = "data_norsyss",
         type = "analysis",
@@ -316,7 +316,7 @@ set_config <- function() {
       )
     )
   )
-  
+
   config$tasks$add_task(
     task_from_config(
       list(
@@ -385,7 +385,7 @@ set_config <- function() {
         action = "ui_mem_plots",
         db_table = "results_mem",
         schema=NULL,
-        for_each=list(tag_outcome=c('influensa_all')), 
+        for_each=list(tag_outcome=c('influensa_all')),
         dependencies = c("norsyss_mem_influensa_all"),
         args = list(
           tag="influensa",
@@ -407,7 +407,7 @@ set_config <- function() {
         action = "ui_mem_plots",
         db_table = "results_mem",
         schema=NULL,
-        for_each=list(tag_outcome=c('influensa')), 
+        for_each=list(tag_outcome=c('influensa')),
         dependencies = c("simple_analysis_msis"),
         args = list(
           tag="influensa",
@@ -432,7 +432,6 @@ set_config <- function() {
           end_year = 2019
       )
       )
-
     )
   )
 

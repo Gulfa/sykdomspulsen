@@ -4,10 +4,14 @@
 #'
 #' @export
 analysis_qp <- function(data, argset, schema){
+  # tm_update_plans("norsyss_qp_gastro")
+  # data <- tm_get_data("norsyss_qp_gastro")
+  # argset <- tm_get_argset("norsyss_qp_gastro")
+  # schema <- tm_get_schema("norsyss_qp_gastro")
+
   # arguments start
   data <- data$data
  # print(data)
-  setDT(data)
 
   data[, denominator:=get(argset$denominator)]
   argset$granularity_geo <- data[1, granularity_geo]
@@ -20,17 +24,17 @@ analysis_qp <- function(data, argset, schema){
                  by=.(yrwk)]
     data <- data[fhidata::days, on = "yrwk", date := mon]
   }
-  
+
   years <- argset$years
 
   for(year in years){
 
-    
+
     predict_start <- as.Date(glue::glue("{year}-01-01"))
     predict_end <- as.Date(glue::glue("{year+1}-01-01"))
 
     min_year_data <- year(min(data[, date]))
-    if(min_year_data > year - argset$training_length){
+    if(min_year_data > year - argset$train_length){
       train_start <- as.Date(glue::glue("{min_year_data}-01-01"))
       train_end <-  as.Date(glue::glue("{min_year_data + argset$train_length}-01-01"))
     }else{

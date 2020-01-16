@@ -13,6 +13,20 @@ tm_get_task <- function(task_name, index_plan = NULL, index_argset = NULL) {
   config$tasks$get_task(task_name)
 }
 
+#' Shortcut to update plans for a task
+#' @param task_name Name of the task
+#' @param index_plan Not used
+#' @param index_argset Not used
+#' @export
+tm_update_plans <- function(task_name, index_plan = NULL, index_argset = NULL) {
+  task <- tm_get_task(
+    task_name = task_name,
+    index_plan = index_plan,
+    index_argset = index_argset
+  )
+  task$update_plans()
+}
+
 #' Shortcut to run task
 #' @param task_name Name of the task
 #' @param index_plan Not used
