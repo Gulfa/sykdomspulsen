@@ -141,6 +141,7 @@ Task <- R6::R6Class(
         )
         pb$tick(0)
         for (i in seq_along(plans)) {
+          print(i)
           plans[[i]]$set_pb(pb)
           plans[[i]]$run_all(schema = schema)
         }

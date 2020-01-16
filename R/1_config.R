@@ -3,7 +3,12 @@ set_config <- function() {
   set_computer_type()
   set_border()
   set_db()
-
+  config$smallMunicips <- c(
+    "municip1151",
+    "municip1835",
+    "municip1252",
+    "municip1739"
+  )
   config$AGES <- list(
     "Totalt" = c(0:105),
     "0-4" = c(0:4),
@@ -192,6 +197,46 @@ set_config <- function() {
        "age"
      )
    ),
+   results_qp = schema$new(
+     db_table = "results_qp",
+     db_config = config$db_config,
+     db_field_types =  c(
+       "granularity_time" = "TEXT",
+       "granularity_geo" = "TEXT",
+       "tag_outcome" = "TEXT",
+       "location_code" = "TEXT",
+       "age" = "TEXT",
+       "sex" = "TEXT",
+       "yrwk" = "TEXT",
+       "year" = "DOUBLE",
+       "week" = "DOUBLE",
+       "date" = "DATE",
+       "n" = "INTEGER",
+       "n_denominator" = "INTEGER",
+       "n_expected" = "DOUBLE",
+       "n_thresholdu0" = "DOUBLE",
+       "n_thresholdu1" = "DOUBLE",
+       "n_thresholdu2" = "DOUBLE",
+       "n_zscore" = "DOUBLE",
+       "n_status" = "TEXT",         
+       "cumE1" = "DOUBLE",
+       "cumL1" = "DOUBLE",
+       "cumU1" = "DOUBLE",
+       "failed" = "TINYINT",
+       "source" = "TEXT"
+     ),
+     db_load_folder = "/xtmp/",
+     keys =  c(
+       "granularity_time",
+       "granularity_geo",
+       "tag_outcome",
+       "location_code",
+       "age",
+       "year",
+       "week",
+       "date"
+     )
+   ),
    results_mem_limits = schema$new(
      db_table = "mem_limits_results",
      db_config = config$db_config,
@@ -246,6 +291,32 @@ set_config <- function() {
       )
     )
   )
+
+  
+  config$tasks$add_task(
+    task_from_config(
+      list(
+        name = "norsyss_qp_gastro",
+        db_table = "data_norsyss",
+        type = "analysis",
+        dependencies = c("data_norsyss"),
+        action = "analysis_qp",
+        filter = "tag_outcome=='gastro'",
+        for_each=list("location_code"="all", "age"="all", "sex"="Totalt"),
+        schema=list(output=config$schema$results_qp,
+                    output_limits=config$schema$results_mem_limits),
+        args = list(
+          tag="gastro",
+          train_length=5,
+          years = c(2018,2019),
+          weeklyDenominatorFunction = sum,
+          denominator= "consult_without_influenza",
+          granularity_time="weekly"
+        )
+      )
+    )
+  )
+  
   config$tasks$add_task(
     task_from_config(
       list(
@@ -297,7 +368,7 @@ set_config <- function() {
         db_table = "reuslts_simple",
         schema=NULL,
         for_each=list("location_code"="all", "tag_outcome"=c("Kikoste", "Campylobacteriose")),
-        dependencies = c("simple_analysis_msis"),
+        dependencies = c("norsyss_mem_influensa"),
         args = list(
           filename = "{location_code}.png",
           folder = " {tag_outcome}/{today}"
@@ -310,6 +381,28 @@ set_config <- function() {
     task_from_config(
       list(
         name = "ui_norsyss_mem_influensa",
+        type = "ui",
+        action = "ui_mem_plots",
+        db_table = "results_mem",
+        schema=NULL,
+        for_each=list(tag_outcome=c('influensa_all')), 
+        dependencies = c("norsyss_mem_influensa_all"),
+        args = list(
+          tag="influensa",
+          icpc2="R60",
+          contactType="Legekontakt, Telefonkontakt",
+          folder_name = "mem_influensa",
+          outputs = c("n_doctors_sheet")
+        ),
+        filter = "source=='data_norsyss'"
+      )
+    )
+  )
+
+  config$tasks$add_task(
+    task_from_config(
+      list(
+        name = "ui_norsyss_mem_influensa_all",
         type = "ui",
         action = "ui_mem_plots",
         db_table = "results_mem",
