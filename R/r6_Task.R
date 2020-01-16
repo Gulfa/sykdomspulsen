@@ -1,4 +1,5 @@
 #' task_from_config
+#'
 #' @export
 task_from_config <- function(conf) {
   name <- conf$name
@@ -7,7 +8,8 @@ task_from_config <- function(conf) {
   task <- NULL
   if (conf$type == "data") {
     plan <- plnr::Plan$new()
-    arguments <- list(fn = get(conf$action), name = name)
+    arguments <- list(fn = get(conf$action), name = name,
+                      today=Sys.Date())
     if ("args" %in% names(conf)) {
       arguments <- c(arguments, conf$args)
     }
@@ -25,6 +27,7 @@ task_from_config <- function(conf) {
       type = conf$type,
       plans = plans,
       schema = schema
+      
     )
 
     task$update_plans_fn <- function() {
@@ -138,10 +141,12 @@ Task <- R6::R6Class(
           total = self$num_argsets()
         )
         pb$tick(0)
+
         for (i in seq_along(plans)) {
           print(i)
           plans[[i]]$set_pb(pb)
           plans[[i]]$run_all(schema = schema)
+          
         }
         if (log) {
           update_rundate(

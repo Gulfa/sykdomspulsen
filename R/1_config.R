@@ -9,14 +9,20 @@ set_config <- function() {
     "municip1252",
     "municip1739"
   )
-  config$AGES <- list(
-    "Totalt" = c(0:105),
-    "0-4" = c(0:4),
-    "5-14" = c(5:14),
-    "15-19" = c(15:19),
-    "20-29" = c(20:29),
-    "30-64" = c(30:64),
-    "65+" = c(65:105)
+#  config <- list()
+  
+  config$def <- list(
+    age = list(
+      norsyss = list(
+        "Totalt" = c(0:105),
+        "0-4" = c(0:4),
+        "5-14" = c(5:14),
+        "15-19" = c(15:19),
+        "20-29" = c(20:29),
+        "30-64" = c(30:64),
+        "65+" = c(65:105)
+      )
+    )
   )
 
   # set schema
@@ -316,6 +322,29 @@ set_config <- function() {
       )
     )
   )
+  config$tasks$add_task(
+    task_from_config(
+      list(
+        name = "norsyss_qp_gastro_daily",
+        db_table = "data_norsyss",
+        type = "analysis",
+        dependencies = c("data_norsyss"),
+        action = "analysis_qp",
+        filter = "tag_outcome=='gastro' & (granularity_geo=='county' | granularity_geo=='norge')",
+        for_each=list("location_code"="all", "age"="all", "sex"="Totalt"),
+        schema=list(output=config$schema$results_qp,
+                    output_limits=config$schema$results_mem_limits),
+        args = list(
+          tag="gastro",
+          train_length=5,
+          years = c(2018,2019),
+          weeklyDenominatorFunction = sum,
+          denominator= "consult_without_influenza",
+          granularity_time="daily"
+        )
+      )
+    )
+  )
   
   config$tasks$add_task(
     task_from_config(
@@ -417,6 +446,36 @@ set_config <- function() {
           outputs = c("charts", "county_sheet", "region_sheet", "norway_sheet")
         ),
         filter = "source=='data_norsyss'"
+      )
+    )
+  )
+  config$tasks$add_task(
+    task_from_config(
+      list(
+        name = "ui_external_api",
+        type = "data",
+        schema=list(input=config$schema$results_qp),
+        action="ui_external_api",
+        args = list(
+          tags = c("gastro"),
+          short = c("Mage-tarm"),
+          long = c("Mage-tarminfeksjoner"),
+          age = config$def$age$norsyss
+        )
+      )
+    )
+  )
+  config$tasks$add_task(
+    task_from_config(
+      list(
+        name = "ui_archive_results_qp",
+        type = "data",
+        schema=list(input=config$schema$results_qp),
+        action="ui_archive_results",
+        args = list(
+          folder = "norsyss_qp",
+          years = 2
+        )
       )
     )
   )

@@ -30,7 +30,7 @@ analysis_qp <- function(data, argset, schema){
     predict_end <- as.Date(glue::glue("{year+1}-01-01"))
 
     min_year_data <- year(min(data[, date]))
-    if(min_year_data > year - argset$training_length){
+    if(min_year_data > year - argset$train_length){
       train_start <- as.Date(glue::glue("{min_year_data}-01-01"))
       train_end <-  as.Date(glue::glue("{min_year_data + argset$train_length}-01-01"))
     }else{
