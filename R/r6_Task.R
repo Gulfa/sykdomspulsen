@@ -105,13 +105,15 @@ Task <- R6::R6Class(
     type = NULL,
     plans = list(),
     schema = list(),
+    parallel = FALSE,
     name = NULL,
     update_plans_fn = NULL,
-    initialize = function(name, type, plans, schema) {
+    initialize = function(name, type, plans, schema, parallel = FALSE) {
       self$name <- name
       self$type <- type
       self$plans <- plans
       self$schema <- schema
+      self$parallel <- parallel
     },
     update_plans = function() {
       if (!is.null(self$update_plans_fn)) {

@@ -1,6 +1,6 @@
 #' shortcut to get available task names
 #' @export
-get_task_names_tm <- function(){
+tm_get_task_names <- function(){
   names(config$tasks$list_task)
 }
 
@@ -9,7 +9,7 @@ get_task_names_tm <- function(){
 #' @param index_plan Not used
 #' @param index_argset Not used
 #' @export
-get_task_tm <- function(task_name, index_plan = NULL, index_argset = NULL) {
+tm_get_task <- function(task_name, index_plan = NULL, index_argset = NULL) {
   config$tasks$get_task(task_name)
 }
 
@@ -18,8 +18,8 @@ get_task_tm <- function(task_name, index_plan = NULL, index_argset = NULL) {
 #' @param index_plan Not used
 #' @param index_argset Not used
 #' @export
-run_task_tm <- function(task_name, index_plan = NULL, index_argset = NULL) {
-  task <- get_task_tm(
+tm_run_task <- function(task_name, index_plan = NULL, index_argset = NULL) {
+  task <- tm_get_task(
     task_name = task_name,
     index_plan = index_plan,
     index_argset = index_argset
@@ -32,8 +32,8 @@ run_task_tm <- function(task_name, index_plan = NULL, index_argset = NULL) {
 #' @param index_plan Not used
 #' @param index_argset Not used
 #' @export
-get_plans_tm <- function(task_name, index_plan = NULL, index_argset = NULL) {
-  get_task_tm(task_name = task_name)$plans
+tm_get_plans <- function(task_name, index_plan = NULL, index_argset = NULL) {
+  tm_get_task(task_name = task_name)$plans
 }
 
 #' Shortcut to plan within task
@@ -41,8 +41,8 @@ get_plans_tm <- function(task_name, index_plan = NULL, index_argset = NULL) {
 #' @param index_plan Plan within task
 #' @param index_argset Not used
 #' @export
-get_plan_tm <- function(task_name, index_plan = 1, index_argset = NULL) {
-  get_task_tm(task_name = task_name)$plans[[index_plan]]
+tm_get_plan <- function(task_name, index_plan = 1, index_argset = NULL) {
+  tm_get_task(task_name = task_name)$plans[[index_plan]]
 }
 
 #' Shortcut to data within plan within task
@@ -50,8 +50,8 @@ get_plan_tm <- function(task_name, index_plan = 1, index_argset = NULL) {
 #' @param index_plan Plan within task
 #' @param index_argset Not used
 #' @export
-get_data_tm <- function(task_name, index_plan = 1, index_argset = NULL) {
-  get_plan_tm(
+tm_get_data <- function(task_name, index_plan = 1, index_argset = NULL) {
+  tm_get_plan(
     task_name = task_name,
     index_plan = index_plan
   )$get_data()
@@ -62,8 +62,8 @@ get_data_tm <- function(task_name, index_plan = 1, index_argset = NULL) {
 #' @param index_plan Plan within task
 #' @param index_argset Argset within plan
 #' @export
-get_argset_tm <- function(task_name, index_plan = 1, index_argset = 1) {
-  get_plan_tm(
+tm_get_argset <- function(task_name, index_plan = 1, index_argset = 1) {
+  tm_get_plan(
     task_name = task_name,
     index_plan = index_plan
   )$get_argset(index_argset)
@@ -74,8 +74,8 @@ get_argset_tm <- function(task_name, index_plan = 1, index_argset = 1) {
 #' @param index_plan Not used
 #' @param index_argset Not used
 #' @export
-get_schema_tm <- function(task_name, index_plan = NULL, index_argset = NULL) {
-  get_task_tm(
+tm_get_schema <- function(task_name, index_plan = NULL, index_argset = NULL) {
+  tm_get_task(
     task_name = task_name
   )$schema
 }
