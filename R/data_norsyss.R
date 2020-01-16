@@ -389,6 +389,7 @@ data_norsyss <- function(data, argset, schema){
       syndrome = conf$syndrome
     )
     res[, tag_outcome:=conf$tag]
+    res[, gender:="Totalt"]
 
     schema$output$db_upsert_load_data_infile(res)
   }
