@@ -307,7 +307,7 @@ set_config <- function() {
                     output_limits=config$schema$results_mem_limits),
         args = list(
           tag="gastro",
-          train_length=5*365.3,
+          train_length=5,
           years = c(2018,2019),
           weeklyDenominatorFunction = sum,
           denominator= "consult_without_influenza",
