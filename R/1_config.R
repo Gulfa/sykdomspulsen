@@ -1,4 +1,9 @@
 set_config <- function() {
+  progressr::handlers(progressr::progress_handler(
+     format = "[:bar] :current/:total (:percent) in :elapsedfull, eta: :eta",
+     clear = FALSE
+  ))
+
   set_computer_name()
   set_computer_type()
   set_border()
@@ -256,7 +261,7 @@ set_config <- function() {
   )
 
   for(i in config$schema){
-    i$db_connect()
+    #i$db_connect()
   }
 
   config$tasks <- TaskManager$new()

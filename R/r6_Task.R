@@ -96,6 +96,7 @@ task_from_config <- function(conf) {
 #' Task
 #'
 #' @import R6
+#' @import foreach
 #' @export
 Task <- R6::R6Class(
   "Task",
@@ -106,17 +107,20 @@ Task <- R6::R6Class(
     plans = list(),
     schema = list(),
     parallel = FALSE,
+    cores = 1,
     name = NULL,
     update_plans_fn = NULL,
-    initialize = function(name, type, plans, schema, parallel = FALSE) {
+    initialize = function(name, type, plans, schema, parallel = FALSE, cores = min(parallel::detectCores(), 5)) {
       self$name <- name
       self$type <- type
       self$plans <- plans
       self$schema <- schema
       self$parallel <- parallel
+      self$cores <- cores
     },
     update_plans = function() {
       if (!is.null(self$update_plans_fn)) {
+        message(glue::glue("Updating plans..."))
         self$plans <- self$update_plans_fn()
       }
     },
@@ -133,18 +137,31 @@ Task <- R6::R6Class(
       if (log == FALSE | can_run()) {
         self$update_plans()
 
-        message(glue::glue("Running task {self$name} with {self$num_argsets()} argsets"))
+        message(glue::glue("Running task {self$name} with {self$num_argsets()} argsets and {self$cores} cores"))
 
-        pb <- progress::progress_bar$new(
-          format = "[:bar] :current/:total (:percent) in :elapsed, eta: :eta",
-          total = self$num_argsets()
-        )
-        pb$tick(0)
-        for (i in seq_along(plans)) {
-          print(i)
-          plans[[i]]$set_pb(pb)
-          plans[[i]]$run_all(schema = schema)
-        }
+        # progressr::with_progress({
+        #   pb <- progressr::progressor(steps = self$num_argsets())
+        #   for (i in seq_along(plans)) {
+        #     if(!interactive()) print(i)
+        #     plans[[i]]$set_progress(pb)
+        #     plans[[i]]$run_all(schema = schema)
+        #   }
+        # })
+
+        doFuture::registerDoFuture()
+        future::plan(future::multisession, workers = self$cores, earlySignal = TRUE)
+
+        progressr::with_progress({
+          pb <- progressr::progressor(steps = self$num_argsets())
+          y <- foreach(x = self$plans, .options.future = list(chunk.size = 100)) %dopar% {
+            data.table::setDTthreads(1)
+            x$set_progress(pb)
+            x$run_all(schema = schema)
+          }
+        })
+        #future::plan(future::sequential)
+        data.table::setDTthreads(4)
+
         if (log) {
           update_rundate(
             package = self$name,

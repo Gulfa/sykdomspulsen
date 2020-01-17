@@ -38,7 +38,7 @@ tm_run_task <- function(task_name, index_plan = NULL, index_argset = NULL) {
     index_plan = index_plan,
     index_argset = index_argset
   )
-  task$run()
+  task$run(log=FALSE)
 }
 
 #' Shortcut to plan within task
