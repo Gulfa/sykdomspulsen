@@ -25,6 +25,8 @@ set_config <- function() {
     "30-64" = c(30:64),
     "65+" = c(65:105)
   )
+
+  if(!foreach::getDoParRegistered()) foreach::registerDoSEQ()
 }
 
 set_computer_name <- function() {
