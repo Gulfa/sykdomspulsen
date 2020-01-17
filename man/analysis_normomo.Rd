@@ -4,7 +4,7 @@
 \alias{analysis_normomo}
 \title{analysis_normomo}
 \usage{
-analysis_normomo(data, argset, schema)
+analysis_normomo(data, argset, schema, ...)
 }
 \description{
 Get and clean MSIS data from msis.no

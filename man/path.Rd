@@ -2,17 +2,15 @@
 % Please edit documentation in R/util_folders.R
 \name{path}
 \alias{path}
-\title{Dashboard folders}
+\title{This function gets the right folder for results}
 \usage{
-path(inside = "data_raw", ..., package = config$package)
+path(type = "output", results_folder_name, date, ...)
 }
 \arguments{
-\item{inside}{where it is inside}
+\item{results_folder_name}{name of the results folder}
 
-\item{...}{an optional path/file}
-
-\item{package}{The name of the package}
+\item{date}{the date of extraction}
 }
 \description{
-This function finds folders according to the dashboard philosophy
+This function gets the right folder for results
 }
