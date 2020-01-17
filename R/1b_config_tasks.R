@@ -79,6 +79,8 @@ set_tasks <- function() {
         db_table = "data_norsyss",
         type = "analysis",
         dependencies = c("data_norsyss"),
+        cores = 6,
+        chunk_size= 100,
         action = "analysis_qp",
         filter = "tag_outcome=='gastro'",
         for_each = list("location_code" = "all", "age" = "all", "sex" = "Totalt"),
@@ -233,4 +235,51 @@ set_tasks <- function() {
       )
     )
   )
+
+  config$tasks$add_task(
+    task_from_config(
+      list(
+        name = "ui_external_api",
+        type = "data",
+        schema=list(input=config$schema$results_qp),
+        action="ui_external_api",
+        args = list(
+          tags = c("gastro"),
+          short = c("Mage-tarm"),
+          long = c("Mage-tarminfeksjoner"),
+          age = config$def$age$norsyss
+        )
+      )
+    )
+  )
+  config$tasks$add_task(
+    task_from_config(
+      list(
+        name = "ui_archive_results_qp",
+        type = "data",
+        schema=list(input=config$schema$results_qp),
+        action="ui_archive_results",
+        args = list(
+          folder = "norsyss_qp",
+          years = 2
+        )
+      )
+    )
+  )
+ config$tasks$add_task(
+    task_from_config(
+      list(
+        name = "ui_obsmail_norsyss",
+        type = "data",
+        schema=list(input=config$schema$results_qp),
+        action="ui_obsmail",
+        args = list(
+          folder = "norsyss_qp",
+          tags = c("gastro")
+        )
+      )
+    )
+  )
+
+  
 }

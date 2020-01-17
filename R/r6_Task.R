@@ -1,13 +1,17 @@
 #' task_from_config
+#'
 #' @export
 task_from_config <- function(conf) {
   name <- conf$name
   plans <- list()
   schema <- conf$schema
+  cores <- get_list(conf, "cores", 1)
+  chunk_size <- get_list(conf, "chunk_size", 1)
   task <- NULL
   if (conf$type == "data") {
     plan <- plnr::Plan$new()
-    arguments <- list(fn = get(conf$action), name = name)
+    arguments <- list(fn = get(conf$action), name = name,
+                      today=Sys.Date())
     if ("args" %in% names(conf)) {
       arguments <- c(arguments, conf$args)
     }
@@ -17,14 +21,20 @@ task_from_config <- function(conf) {
       name = name,
       type = conf$type,
       plans = list(plan),
-      schema = schema
+      schema = schema,
+      cores = cores,
+      chunk_size = chunk_size
+
     )
   } else if (conf$type %in% c("analysis", "ui")) {
     task <- Task$new(
       name = name,
       type = conf$type,
       plans = plans,
-      schema = schema
+      schema = schema,
+      cores = cores,
+      chunk_size = chunk_size
+      
     )
 
     task$update_plans_fn <- function() {
