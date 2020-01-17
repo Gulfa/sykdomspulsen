@@ -479,6 +479,21 @@ set_config <- function() {
       )
     )
   )
+ config$tasks$add_task(
+    task_from_config(
+      list(
+        name = "ui_obsmail_norsyss",
+        type = "data",
+        schema=list(input=config$schema$results_qp),
+        action="ui_obsmail",
+        args = list(
+          folder = "norsyss_qp",
+          tags = c("gastro")
+        )
+      )
+    )
+  )
+  
   config$tasks$add_task(
     task_from_config(
       list(
