@@ -106,17 +106,17 @@ Task <- R6::R6Class(
     type = NULL,
     plans = list(),
     schema = list(),
-    parallel = FALSE,
     cores = 1,
+    chunk_size = 100,
     name = NULL,
     update_plans_fn = NULL,
-    initialize = function(name, type, plans, schema, parallel = FALSE, cores = min(parallel::detectCores(), 5)) {
+    initialize = function(name, type, plans, schema, cores = 1, chunk_size = 100) {
       self$name <- name
       self$type <- type
       self$plans <- plans
       self$schema <- schema
-      self$parallel <- parallel
       self$cores <- cores
+      self$chunk_size <- chunk_size
     },
     update_plans = function() {
       if (!is.null(self$update_plans_fn)) {
@@ -131,13 +131,11 @@ Task <- R6::R6Class(
       }
       return(retval)
     },
-    run = function(log = TRUE) {
+    run = function(log = TRUE, cores = self$cores) {
       # task <- config$tasks$task_get("analysis_normomo")
       message(glue::glue("task: {self$name}"))
       if (log == FALSE | can_run()) {
         self$update_plans()
-
-        message(glue::glue("Running task {self$name} with {self$num_argsets()} argsets and {self$cores} cores"))
 
         # progressr::with_progress({
         #   pb <- progressr::progressor(steps = self$num_argsets())
@@ -148,19 +146,47 @@ Task <- R6::R6Class(
         #   }
         # })
 
-        doFuture::registerDoFuture()
-        future::plan(future::multisession, workers = self$cores, earlySignal = TRUE)
+        message(glue::glue("Running task={self$name} with plans={length(self$plans)} and argsets={self$num_argsets()}"))
+
+        if(cores != 1){
+          doFuture::registerDoFuture()
+          if(length(self$plans)==1){
+            # parallelize the inner loop
+            future::plan(list(
+              future::sequential,
+              future::multisession,
+              workers = cores,
+              earlySignal = TRUE
+              ))
+
+            parallel <- "plans=sequential, argset=multisession"
+          } else {
+            # parallelize the outer loop
+            future::plan(future::multisession, workers = cores, earlySignal = TRUE)
+
+            parallel <- "plans=multisession, argset=sequential"
+          }
+        } else {
+          parallel <- "plans=sequential, argset=sequential"
+        }
+
+        message(glue::glue("{parallel} with cores={self$cores} and chunk_size={self$chunk_size}"))
 
         progressr::with_progress({
           pb <- progressr::progressor(steps = self$num_argsets())
-          y <- foreach(x = self$plans, .options.future = list(chunk.size = 100)) %dopar% {
-            data.table::setDTthreads(1)
+          y <- foreach(x = self$plans, .options.future = list(chunk.size = self$chunk_size)) %dopar% {
+            if(cores != 1) data.table::setDTthreads(1)
+
+            for(s in schema) s$db_connect()
             x$set_progress(pb)
+            #x$run_all(schema = schema, chunk_size = self$chunk_size)
             x$run_all(schema = schema)
+            for(s in schema) s$db_disconnect()
           }
         })
-        #future::plan(future::sequential)
-        data.table::setDTthreads(4)
+
+        future::plan(future::sequential)
+        data.table::setDTthreads()
 
         if (log) {
           update_rundate(

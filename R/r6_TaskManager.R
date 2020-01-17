@@ -89,9 +89,11 @@ tm_get_argset <- function(task_name, index_plan = 1, index_argset = 1) {
 #' @param index_argset Not used
 #' @export
 tm_get_schema <- function(task_name, index_plan = NULL, index_argset = NULL) {
-  tm_get_task(
+  schema <- tm_get_task(
     task_name = task_name
   )$schema
+  for(s in schema) s$db_connect()
+  return(schema)
 }
 
 #'

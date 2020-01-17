@@ -9,8 +9,6 @@ analysis_qp <- function(data, argset, schema){
   # argset <- tm_get_argset("norsyss_qp_gastro")
   # schema <- tm_get_schema("norsyss_qp_gastro")
 
-  schema$output$db_connect()
-
   # arguments start
   data <- copy(data$data)
  # print(data)
@@ -30,8 +28,6 @@ analysis_qp <- function(data, argset, schema){
   years <- argset$years
 
   for(year in years){
-
-
     predict_start <- as.Date(glue::glue("{year}-01-01"))
     predict_end <- as.Date(glue::glue("{year+1}-01-01"))
 
@@ -58,8 +54,6 @@ analysis_qp <- function(data, argset, schema){
     ret <- clean_post_analysis(ret, argset)
     schema$output$db_upsert_load_data_infile(ret, verbose=F)
   }
-
-  schema$output$db_disconnect()
 }
 
 

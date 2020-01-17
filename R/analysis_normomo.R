@@ -3,7 +3,7 @@
 #' Get and clean MSIS data from msis.no
 #'
 #' @export
-analysis_normomo <-  function(data, argset, schema){
+analysis_normomo <-  function(data, argset, schema, ...){
   # data <- tm_shortcut_data("analysis_normomo", index_plan=1)
   # argset <- tm_shortcut_argset("analysis_normomo", index_plan=1, index_argset = 1)
   # schema <- tm_shortcut_schema("analysis_normomo")
@@ -39,7 +39,7 @@ analysis_normomo <-  function(data, argset, schema){
     data_to_save,
     location_code = argset$location_code
   )
-  schema$output$db_upsert_load_data_infile(data_clean)
+  schema$output$db_upsert_load_data_infile(data_clean, verbose = FALSE)
 }
 
 
