@@ -1,5 +1,4 @@
-
-#'
+#' ui_obsmail
 #'
 #' @export
 ui_obsmail<- function(data, argset, schema) {

@@ -1,3 +1,6 @@
+#'ui_external_api
+#' 
+#' @export
 ui_external_api <- function(data, argset, schema) {
   fd::msg("Saving config for the external api")
   f <- path("output", "externalapi", argset$today)

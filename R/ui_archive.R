@@ -1,4 +1,5 @@
-#'
+#' ui_archive
+#' 
 #' @export
 ui_archive_results <- function(data, argset, schema){
   latest_year_query <- schema$input$dplyr_tbl() %>%

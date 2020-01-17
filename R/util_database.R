@@ -351,7 +351,7 @@ schema <- R6Class("schema",
       dif <- round(as.numeric(difftime(b, a, units = "secs")), 1)
       message(glue::glue("Loaded {nrow(newdata)} rows in {dif} seconds"))
     },
-    db_upsert_load_data_infile = function(newdata, drop_indexes = NULL) {
+    db_upsert_load_data_infile = function(newdata, drop_indexes = NULL, verbose = TRUE) {
       a <- Sys.time()
       infile <- random_file(self$db_load_folder)
       write_data_infile(
@@ -369,7 +369,7 @@ schema <- R6Class("schema",
       )
       b <- Sys.time()
       dif <- round(as.numeric(difftime(b, a, units = "secs")), 1)
-      message(glue::glue("Loaded {nrow(newdata)} rows in {dif} seconds"))
+      if(verbose) message(glue::glue("Loaded {nrow(newdata)} rows in {dif} seconds"))
     },
     db_drop_all_rows = function() {
       drop_all_rows(self$conn, self$db_table)

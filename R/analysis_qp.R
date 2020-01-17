@@ -4,10 +4,14 @@
 #'
 #' @export
 analysis_qp <- function(data, argset, schema){
+  # tm_update_plans("norsyss_qp_gastro")
+  # data <- tm_get_data("norsyss_qp_gastro")
+  # argset <- tm_get_argset("norsyss_qp_gastro")
+  # schema <- tm_get_schema("norsyss_qp_gastro")
+
   # arguments start
-  data <- data$data
+  data <- copy(data$data)
  # print(data)
-  setDT(data)
 
   data[, denominator:=get(argset$denominator)]
   argset$granularity_geo <- data[1, granularity_geo]
@@ -20,12 +24,10 @@ analysis_qp <- function(data, argset, schema){
                  by=.(yrwk)]
     data <- data[fhidata::days, on = "yrwk", date := mon]
   }
-  
+
   years <- argset$years
 
   for(year in years){
-
-    
     predict_start <- as.Date(glue::glue("{year}-01-01"))
     predict_end <- as.Date(glue::glue("{year+1}-01-01"))
 
@@ -50,9 +52,8 @@ analysis_qp <- function(data, argset, schema){
     diagnostics <- update_diagnostics(attr(ret, "diagnostics"),argset)
 
     ret <- clean_post_analysis(ret, argset)
-    schema$output$db_upsert_load_data_infile(ret)
+    schema$output$db_upsert_load_data_infile(ret, verbose=F)
   }
-
 }
 
 

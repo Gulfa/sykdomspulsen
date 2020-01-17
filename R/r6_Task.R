@@ -5,6 +5,8 @@ task_from_config <- function(conf) {
   name <- conf$name
   plans <- list()
   schema <- conf$schema
+  cores <- get_list(conf, "cores", 1)
+  chunk_size <- get_list(conf, "chunk_size", 1)
   task <- NULL
   if (conf$type == "data") {
     plan <- plnr::Plan$new()
@@ -19,14 +21,19 @@ task_from_config <- function(conf) {
       name = name,
       type = conf$type,
       plans = list(plan),
-      schema = schema
+      schema = schema,
+      cores = cores,
+      chunk_size = chunk_size
+
     )
   } else if (conf$type %in% c("analysis", "ui")) {
     task <- Task$new(
       name = name,
       type = conf$type,
       plans = plans,
-      schema = schema
+      schema = schema,
+      cores = cores,
+      chunk_size = chunk_size
       
     )
 
@@ -99,6 +106,7 @@ task_from_config <- function(conf) {
 #' Task
 #'
 #' @import R6
+#' @import foreach
 #' @export
 Task <- R6::R6Class(
   "Task",
@@ -108,16 +116,21 @@ Task <- R6::R6Class(
     type = NULL,
     plans = list(),
     schema = list(),
+    cores = 1,
+    chunk_size = 100,
     name = NULL,
     update_plans_fn = NULL,
-    initialize = function(name, type, plans, schema) {
+    initialize = function(name, type, plans, schema, cores = 1, chunk_size = 100) {
       self$name <- name
       self$type <- type
       self$plans <- plans
       self$schema <- schema
+      self$cores <- cores
+      self$chunk_size <- chunk_size
     },
     update_plans = function() {
       if (!is.null(self$update_plans_fn)) {
+        message(glue::glue("Updating plans..."))
         self$plans <- self$update_plans_fn()
       }
     },
@@ -128,26 +141,63 @@ Task <- R6::R6Class(
       }
       return(retval)
     },
-    run = function(log = TRUE) {
+    run = function(log = TRUE, cores = self$cores) {
       # task <- config$tasks$task_get("analysis_normomo")
       message(glue::glue("task: {self$name}"))
       if (log == FALSE | can_run()) {
         self$update_plans()
 
-        message(glue::glue("Running task {self$name} with {self$num_argsets()} argsets"))
+        # progressr::with_progress({
+        #   pb <- progressr::progressor(steps = self$num_argsets())
+        #   for (i in seq_along(plans)) {
+        #     if(!interactive()) print(i)
+        #     plans[[i]]$set_progress(pb)
+        #     plans[[i]]$run_all(schema = schema)
+        #   }
+        # })
 
-        pb <- progress::progress_bar$new(
-          format = "[:bar] :current/:total (:percent) in :elapsed, eta: :eta",
-          total = self$num_argsets()
-        )
-        pb$tick(0)
+        message(glue::glue("Running task={self$name} with plans={length(self$plans)} and argsets={self$num_argsets()}"))
 
-        for (i in seq_along(plans)) {
-          print(i)
-          plans[[i]]$set_pb(pb)
-          plans[[i]]$run_all(schema = schema)
-          
+        if(cores != 1){
+          doFuture::registerDoFuture()
+          if(length(self$plans)==1){
+            # parallelize the inner loop
+            future::plan(list(
+              future::sequential,
+              future::multisession,
+              workers = cores,
+              earlySignal = TRUE
+              ))
+
+            parallel <- "plans=sequential, argset=multisession"
+          } else {
+            # parallelize the outer loop
+            future::plan(future::multisession, workers = cores, earlySignal = TRUE)
+
+            parallel <- "plans=multisession, argset=sequential"
+          }
+        } else {
+          parallel <- "plans=sequential, argset=sequential"
         }
+
+        message(glue::glue("{parallel} with cores={self$cores} and chunk_size={self$chunk_size}"))
+
+        progressr::with_progress({
+          pb <- progressr::progressor(steps = self$num_argsets())
+          y <- foreach(x = self$plans, .options.future = list(chunk.size = self$chunk_size)) %dopar% {
+            if(cores != 1) data.table::setDTthreads(1)
+
+            for(s in schema) s$db_connect()
+            x$set_progress(pb)
+            #x$run_all(schema = schema, chunk_size = self$chunk_size)
+            x$run_all(schema = schema)
+            for(s in schema) s$db_disconnect()
+          }
+        })
+
+        future::plan(future::sequential)
+        data.table::setDTthreads()
+
         if (log) {
           update_rundate(
             package = self$name,

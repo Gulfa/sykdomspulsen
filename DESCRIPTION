@@ -6,7 +6,7 @@ Authors@R: c(
   person("Gunnar", "R\u00F8", email = "GunnarOyvindIsaksson.Ro@fhi.no", role = c("aut")), 
   person("B", "V", email = "beva@fhi.no", role = c("aut"))
   )
-Description: NIPH infectious disease surveillance system
+Description: Sykdomspulsen is a free and open-source health surveillance system designed and developed by the Norwegian Institute of Public Health.
 URL: https://sykdomspulsen-dokumentasjon.no
 BugReports: https://github.com/folkehelseinstituttet/fhi/sykdomspuslen/issues
 Depends:
@@ -36,11 +36,33 @@ Imports:
   R6,
   httr,
   rvest,
-  progress
+  progressr,
+  doFuture,
+  future,
+  foreach,
+  glm2,
+  DBI,
+  MOMO,
+  XML,
+  cowplot,
+  dplyr,
+  fhi,
+  fhiplot,
+  ggpubr,
+  jsonlite,
+  magick,
+  odbc,
+  plnr,
+  readr,
+  reshape2,
+  rlang,
+  tidyr,
+  withr,
+  xlsx
 Suggests: testthat,
     knitr,
     usethis
-License: GPL-3
+License: GPL-3 + file LICENSE
 LazyData: true
 RoxygenNote: 6.1.1
 VignetteBuilder: knitr
