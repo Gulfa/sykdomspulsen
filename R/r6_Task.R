@@ -78,20 +78,7 @@ task_from_config <- function(conf) {
         if (extra_filter != "") {
           filter <- paste(filter, extra_filter, sep = " & ")
         }
-        current_plan$add_data(name = "data", fn = function() {
-          if (is.na(filter)) {
-            d <- tbl(table_name) %>%
-              dplyr::collect() %>%
-              latin1_to_utf8()
-          } else {
-            d <- tbl(table_name) %>%
-              dplyr::filter(!!!rlang::parse_exprs(filter)) %>%
-              dplyr::collect() %>%
-              latin1_to_utf8()
-          }
-          return(d)
-        })
-
+        add_data_helper(current_plan, filter, table_name)
         if ("args" %in% names(conf)) {
           arguments <- c(arguments, conf$args)
         }
@@ -103,6 +90,27 @@ task_from_config <- function(conf) {
   }
   return(task)
 }
+
+
+add_data_helper <- function(current_plan, filter, table_name){
+  force(filter)
+  force(current_plan)
+  force(table_name)
+  current_plan$add_data(name = "data", fn = function() {
+    if (is.na(filter)) {
+      d <- tbl(table_name) %>%
+        dplyr::collect() %>%
+        latin1_to_utf8()
+    } else {
+      d <- tbl(table_name) %>%
+        dplyr::filter(!!!rlang::parse_exprs(filter)) %>%
+        dplyr::collect() %>%
+        latin1_to_utf8()
+    }
+    return(d)
+  })
+}
+
 #' Task
 #'
 #' @import R6

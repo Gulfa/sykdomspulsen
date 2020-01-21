@@ -91,7 +91,7 @@ set_tasks <- function() {
         args = list(
           tag = "gastro",
           train_length = 5,
-          years = c(2018, 2019),
+          years = c(2018, 2019, 2020),
           weeklyDenominatorFunction = sum,
           denominator = "consult_without_influenza",
           granularity_time = "weekly"
