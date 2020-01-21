@@ -358,6 +358,8 @@ IdentifyDatasets <-
 #'
 #' @export
 data_norsyss <- function(data, argset, schema){
+  # argset <- tm_get_argset("data_norsyss")
+  # schema <- tm_get_schema("data_norsyss")
   syndromes <- argset$syndromes
   files <- IdentifyDatasets()
   if (!fd::config$is_dev) {
@@ -376,23 +378,54 @@ data_norsyss <- function(data, argset, schema){
   #EmailNotificationOfNewData(files$id)
 
   d <- fread(fd::path("data_raw", files$raw, package="sykdomspuls"))
-  d[, date := data.table::as.IDate(date)]
+
+  setnames(d,"date","x_date")
+  dates <- unique(d[,"x_date"])
+  dates[,date:=data.table::as.IDate(x_date)]
+  dates[, isoyear := fhi::isoyear_n(date)]
+
+  d[dates,on="x_date", date:=date]
+  d[dates,on="x_date", isoyear:=isoyear]
+  d[,x_date:=NULL]
+
   d[, respiratory := NULL]
   d[, influensa_all := influensa]
+
+  # finding dates to run
+  max_year_in_data <- fhi::isoyear_n(max(d$date))
+
+  max_date <- schema$output$dplyr_tbl() %>%
+    dplyr::group_by(tag_outcome) %>%
+    dplyr::summarise(date = max(date, na.rm=T)) %>%
+    dplyr::collect() %>%
+    latin1_to_utf8()
+  if(nrow(max_date)==0){
+    max_year_in_db <- 2006
+  } else {
+    max_date <- min(max_date$date)
+    max_year_in_db <- fhi::isoyear_n(max_date)-1
+  }
+  if(max_year_in_db<=2006) max_year_in_db <- 2006
+
+  schema$output$db_drop_rows_where(glue::glue("year>={max_year_in_db}"))
+  #schema$output$db_drop_constraint()
+  years_to_process <- max_year_in_db:max_year_in_data
+
   for (i in 1:nrow(syndromes)) {
     conf <- syndromes[i]
     fd::msg(sprintf("Processing %s/%s: %s", i, nrow(syndromes), conf$tag))
 
-
     res <- CleanData(
-      d = copy(d[Kontaktype %in% conf$contactType[[1]]]),
+      d = copy(d[isoyear %in% years_to_process & Kontaktype %in% conf$contactType[[1]]]),
       syndrome = conf$syndrome
     )
     res[, tag_outcome:=conf$tag]
     res[, gender:="Totalt"]
 
-    schema$output$db_upsert_load_data_infile(res)
+    schema$output$db_load_data_infile(res)
   }
+  #fd::msg("Adding db constraint")
+  #schema$output$db_add_constraint()
   fd::msg("New data is now formatted and ready")
   return(TRUE)
 }

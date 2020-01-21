@@ -34,7 +34,7 @@ task_from_config <- function(conf) {
       schema = schema,
       cores = cores,
       chunk_size = chunk_size
-      
+
     )
 
     task$update_plans_fn <- function() {
@@ -177,25 +177,34 @@ Task <- R6::R6Class(
             parallel <- "plans=multisession, argset=sequential"
           }
         } else {
+          future::plan(future::sequential)
+          foreach::registerDoSEQ()
+          data.table::setDTthreads()
+
           parallel <- "plans=sequential, argset=sequential"
         }
 
         message(glue::glue("{parallel} with cores={self$cores} and chunk_size={self$chunk_size}"))
 
-        progressr::with_progress({
-          pb <- progressr::progressor(steps = self$num_argsets())
-          y <- foreach(x = self$plans, .options.future = list(chunk.size = self$chunk_size)) %dopar% {
-            if(cores != 1) data.table::setDTthreads(1)
+        progressr::with_progress(
+          {
+            pb <- progressr::progressor(steps = self$num_argsets())
+            y <- foreach(x = self$plans, .options.future = list(chunk.size = self$chunk_size)) %dopar% {
+              if(cores != 1) data.table::setDTthreads(1)
 
-            for(s in schema) s$db_connect()
-            x$set_progress(pb)
-            #x$run_all(schema = schema, chunk_size = self$chunk_size)
-            x$run_all(schema = schema)
-            for(s in schema) s$db_disconnect()
-          }
-        })
+              for(s in schema) s$db_connect()
+              x$set_progress(pb)
+              #x$run_all(schema = schema, chunk_size = self$chunk_size)
+              x$run_all(schema = schema)
+              for(s in schema) s$db_disconnect()
+            }
+          },
+          delay_stdout=FALSE,
+          delay_conditions = ""
+        )
 
         future::plan(future::sequential)
+        foreach::registerDoSEQ()
         data.table::setDTthreads()
 
         if (log) {

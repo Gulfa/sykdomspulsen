@@ -74,14 +74,16 @@ data_normomo_internal <- function(){
 #'
 #' @export
 data_normomo <- function(data, argset, schema){
-  # data <- tm_shortcut_data("data_normomo")
-  # argset <- tm_shortcut_argset("data_normomo")
-  # schema <- tm_shortcut_schema("data_normomo")
+  # data <- tm_get_data("data_normomo")
+  # argset <- tm_get_argset("data_normomo")
+  # schema <- tm_get_schema("data_normomo")
 
   d <- data_normomo_internal()
-  drop_table(schema$output$db_table)
+  schema$output$db_drop_table()
   schema$output$db_connect()
-  schema$output$db_upsert_load_data_infile(d)
+  schema$output$db_drop_constraint()
+  schema$output$db_load_data_infile(d)
+  schema$output$db_add_constraint()
 }
 
 

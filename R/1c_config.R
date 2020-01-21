@@ -26,7 +26,10 @@ set_config <- function() {
     "65+" = c(65:105)
   )
 
-  if(!foreach::getDoParRegistered()) foreach::registerDoSEQ()
+  if(!foreach::getDoParRegistered()){
+    future::plan(future::sequential)
+    foreach::registerDoSEQ()
+  }
 }
 
 set_computer_name <- function() {

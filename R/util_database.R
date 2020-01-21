@@ -43,15 +43,35 @@ random_file <- function(folder, extension = ".csv") {
   fs::path(folder, paste0(random_uuid(), extension))
 }
 
-write_data_infile <- function(dt, file = "/xtmp/x123.csv") {
+write_data_infile <- function(
+  dt,
+  file = "/xtmp/x123.csv",
+  colnames=T,
+  eol="\n",
+  quote = "auto",
+  na = "\\N"
+  ) {
   fwrite(dt,
     file = file,
     logical01 = T,
-    na = "\\N"
+    na = na,
+    col.names=colnames,
+    eol=eol,
+    quote = quote
   )
 }
 
-load_data_infile <- function(conn = NULL, db_config = NULL, table, dt = NULL, file = "/xtmp/x123.csv") {
+load_data_infile <- function(
+  conn,
+  db_config,
+  table,
+  dt,
+  file
+) UseMethod("load_data_infile")
+
+load_data_infile.default <- function(conn = NULL, db_config = NULL, table, dt = NULL, file = "/xtmp/x123.csv") {
+  t0 <- Sys.time()
+
   if (is.null(conn) & is.null(db_config)) {
     stop("conn and db_config both have error")
   } else if (is.null(conn) & !is.null(db_config)) {
@@ -60,15 +80,9 @@ load_data_infile <- function(conn = NULL, db_config = NULL, table, dt = NULL, fi
     on.exit(DBI::dbDisconnect(conn))
   }
 
-  if (!is.null(dt)) {
-    correct_order <- DBI::dbListFields(conn, "weather")
-    setcolorder(dt, correct_order)
-    write_data_infile(dt = dt, file = file)
-    names_dt <- names(dt)
-  } else {
-    x <- fread(file, nrows = 1)
-    names_dt <- names(x)
-  }
+  correct_order <- DBI::dbListFields(conn, table)
+  if(length(correct_order)>0) dt <- dt[,correct_order,with=F]
+  write_data_infile(dt = dt, file = file)
   on.exit(fs::file_delete(file), add = T)
 
   sep <- ","
@@ -86,16 +100,26 @@ load_data_infile <- function(conn = NULL, db_config = NULL, table, dt = NULL, fi
     "OPTIONALLY ENCLOSED BY ", DBI::dbQuoteString(conn, quote), "\n",
     "LINES TERMINATED BY ", DBI::dbQuoteString(conn, eol), "\n",
     "IGNORE ", skip + as.integer(header), " LINES \n",
-    "(", paste0(names_dt, collapse = ","), ")"
+    "(", paste0(correct_order, collapse = ","), ")"
   )
   DBI::dbExecute(conn, sql)
 
+  t1 <- Sys.time()
+  dif <- round(as.numeric(difftime(t1, t0, units = "secs")), 1)
+  message(glue::glue("Uploaded {nrow(dt)} rows in {dif} seconds to {table}"))
 
-
-  return(FALSE)
+  invisible()
 }
 
-upsert_load_data_infile <- function(conn = NULL, db_config = NULL, table, dt, file = "/xtmp/x123.csv", fields, drop_indexes = NULL) {
+`load_data_infile.Microsoft SQL Server` <- function(
+  conn = NULL,
+  db_config = NULL,
+  table,
+  dt,
+  file = tempfile()
+  ) {
+  a <- Sys.time()
+
   if (is.null(conn) & is.null(db_config)) {
     stop("conn and db_config both have error")
   } else if (is.null(conn) & !is.null(db_config)) {
@@ -103,6 +127,127 @@ upsert_load_data_infile <- function(conn = NULL, db_config = NULL, table, dt, fi
     use_db(conn, db_config$db)
     on.exit(DBI::dbDisconnect(conn))
   }
+
+  correct_order <- DBI::dbListFields(conn, table)
+  if(length(correct_order)>0) dt <- dt[,correct_order,with=F]
+  write_data_infile(
+    dt = dt,
+    file = file,
+    colnames=F,
+    eol = "\n",
+    quote = F,
+    na="")
+  on.exit(fs::file_delete(file), add = T)
+
+  format_file <- tempfile()
+  on.exit(fs::file_delete(format_file), add = T)
+
+  args <- c(
+    table,
+    "format" ,
+    "nul",
+    "-q",
+    "-c",
+    "-t,",
+    "-f",
+    format_file,
+    "-S",
+    db_config$server,
+    "-d",
+    db_config$db,
+    "-U",
+    db_config$user,
+    "-P",
+    db_config$password
+  )
+  processx::run(
+    "bcp",
+    args,
+    echo_cmd = F
+  )
+
+  args <- c(
+    table,
+    "in" ,
+    file,
+    "-S",
+    db_config$server,
+    "-d",
+    db_config$db,
+    "-U",
+    db_config$user,
+    "-P",
+    db_config$password,
+    "-f",
+    format_file
+  )
+  processx::run(
+    "bcp",
+    args,
+    echo_cmd = F
+  )
+
+  b <- Sys.time()
+  dif <- round(as.numeric(difftime(b, a, units = "secs")), 1)
+  message(glue::glue("Uploaded {nrow(dt)} rows in {dif} seconds to {table}"))
+
+  invisible()
+}
+
+######### upsert_load_data_infile
+
+upsert_load_data_infile <- function(
+  conn = NULL,
+  db_config,
+  table,
+  dt,
+  file,
+  fields,
+  keys,
+  drop_indexes
+){
+  if (is.null(conn) & is.null(db_config)) {
+    stop("conn and db_config both have error")
+  } else if (is.null(conn) & !is.null(db_config)) {
+    conn <- get_db_connection(db_config = db_config)
+    use_db(conn, db_config$db)
+    on.exit(DBI::dbDisconnect(conn))
+  }
+
+  upsert_load_data_infile_internal(
+    conn = conn,
+    db_config = db_config,
+    table = table,
+    dt = dt,
+    file = file,
+    fields = fields,
+    keys = keys,
+    drop_indexes = drop_indexes
+  )
+
+}
+
+upsert_load_data_infile_internal <- function(
+  conn,
+  db_config,
+  table,
+  dt,
+  file,
+  fields,
+  keys,
+  drop_indexes
+  ) UseMethod("upsert_load_data_infile_internal")
+
+upsert_load_data_infile_internal.default <- function(
+  conn = NULL,
+  db_config = NULL,
+  table,
+  dt,
+  file = "/xtmp/x123.csv",
+  fields,
+  keys = NULL,
+  drop_indexes = NULL
+) {
   temp_name <- random_uuid()
   # ensure that the table is removed **FIRST** (before deleting the connection)
   on.exit(DBI::dbRemoveTable(conn, temp_name), add = TRUE, after = FALSE)
@@ -123,7 +268,15 @@ upsert_load_data_infile <- function(conn = NULL, db_config = NULL, table, dt, fi
     }
   }
 
-  load_data_infile(conn = conn, table = temp_name, dt = dt, file = file)
+  load_data_infile(
+    conn = conn,
+    db_config = db_config,
+    table = temp_name,
+    dt = dt,
+    file = file
+    )
+
+  t0 <- Sys.time()
 
   vals_fields <- glue::glue_collapse(fields, sep = ", ")
   vals <- glue::glue("{fields} = VALUES({fields})")
@@ -135,20 +288,161 @@ upsert_load_data_infile <- function(conn = NULL, db_config = NULL, table, dt, fi
     ")
   DBI::dbExecute(conn, sql)
 
-  return(FALSE)
+  t1 <- Sys.time()
+  dif <- round(as.numeric(difftime(t1, t0, units = "secs")), 1)
+  message(glue::glue("Upserted {nrow(dt)} rows in {dif} seconds from {temp_name} to {table}"))
+
+  invisible()
 }
 
-#setGeneric("create_table")
-create_table <- function(conn, table, fields) {
+`upsert_load_data_infile_internal.Microsoft SQL Server` <- function(
+  conn = NULL,
+  db_config = NULL,
+  table,
+  dt,
+  file = tempfile(),
+  fields,
+  keys,
+  drop_indexes = NULL
+) {
+  temp_name <- paste0("##",random_uuid())
+
+  # ensure that the table is removed **FIRST** (before deleting the connection)
+  on.exit(DBI::dbRemoveTable(conn, temp_name), add = TRUE, after = FALSE)
+
+  sql <- glue::glue("SELECT * INTO {temp_name} FROM {table} WHERE 1 = 0;")
+  DBI::dbExecute(conn, sql)
+
+  load_data_infile(
+    conn = conn,
+    db_config = db_config,
+    table = temp_name,
+    dt = dt,
+    file = file
+    )
+
+  a <- Sys.time()
+  add_index(
+    conn = conn,
+    table = temp_name,
+    keys = keys
+  )
+
+  vals_fields <- glue::glue_collapse(fields, sep = ", ")
+  vals <- glue::glue("{fields} = VALUES({fields})")
+  vals <- glue::glue_collapse(vals, sep = ", ")
+
+  sql_on_keys <- glue::glue("{t} = {s}", t=paste0("t.",keys), s=paste0("s.",keys))
+  sql_on_keys <- paste0(sql_on_keys, collapse = " and ")
+
+  sql_update_set <- glue::glue("{t} = {s}", t=paste0("t.",fields), s=paste0("s.",fields))
+  sql_update_set <- paste0(sql_update_set, collapse = ", ")
+
+  sql_insert_fields <- paste0(fields, collapse=", ")
+  sql_insert_s_fields <- paste0(paste0("s.",fields), collapse=", ")
+
+  sql <- glue::glue("
+  MERGE {table} t
+  USING {temp_name} s
+  ON ({sql_on_keys})
+  WHEN MATCHED
+  THEN UPDATE SET
+    {sql_update_set}
+  WHEN NOT MATCHED BY TARGET
+  THEN INSERT ({sql_insert_fields})
+    VALUES ({sql_insert_s_fields});
+  ")
+
+  DBI::dbExecute(conn, sql)
+
+  b <- Sys.time()
+  dif <- round(as.numeric(difftime(b, a, units = "secs")), 1)
+  message(glue::glue("Upserted {nrow(dt)} rows in {dif} seconds from {temp_name} to {table}"))
+
+  invisible()
+}
+
+######### create_table
+create_table <- function(conn, table, fields, keys) UseMethod("create_table")
+
+create_table.default <- function(conn, table, fields, keys=NULL) {
   fields_new <- fields
-  if(inherits(conn,"MySQL")){
-    fields_new[fields == "TEXT"] <- "TEXT CHARACTER SET utf8 COLLATE utf8_unicode_ci"
-  }
+  fields_new[fields == "TEXT"] <- "TEXT CHARACTER SET utf8 COLLATE utf8_unicode_ci"
+
   sql <- DBI::sqlCreateTable(conn, table, fields_new,
-    row.names = F, temporary = F
+                             row.names = F, temporary = F
   )
   DBI::dbExecute(conn, sql)
 }
+
+`create_table.Microsoft SQL Server` <- function(conn, table, fields, keys=NULL) {
+  fields_new <- fields
+  fields_new[fields == "TEXT"] <- "NVARCHAR (50)"
+  fields_new[fields == "DOUBLE"] <- "FLOAT"
+
+  if(!is.null(keys)) fields_new[names(fields_new) %in% keys] <- paste0(fields_new[names(fields_new) %in% keys], " NOT NULL")
+  sql <- DBI::sqlCreateTable(conn, table, fields_new,
+                             row.names = F, temporary = F
+  )
+  DBI::dbExecute(conn, sql)
+}
+
+######### add_constraint
+add_constraint <- function(conn, table, keys) UseMethod("add_constraint")
+
+add_constraint.default <- function(conn, table, keys) {
+  t0 <- Sys.time()
+
+  primary_keys <- glue::glue_collapse(keys, sep = ", ")
+  constraint <- glue::glue("PK_{table}")
+  sql <- glue::glue("
+          ALTER table {table}
+          ADD CONSTRAINT {constraint} PRIMARY KEY CLUSTERED ({primary_keys});")
+  #print(sql)
+  a <- DBI::dbExecute(conn, sql)
+  # DBI::dbExecute(conn, "SHOW INDEX FROM x");
+  t1 <- Sys.time()
+  dif <- round(as.numeric(difftime(t1, t0, units = "secs")), 1)
+  message(glue::glue("Added constraint {constraint} in {dif} seconds to {table}"))
+}
+
+######### drop_constraint
+drop_constraint <- function(conn, table) UseMethod("drop_constraint")
+
+drop_constraint.default <- function(conn, table) {
+  constraint <- glue::glue("PK_{table}")
+  sql <- glue::glue("
+          ALTER table {table}
+          DROP CONSTRAINT {constraint};")
+  #print(sql)
+  try(a <- DBI::dbExecute(conn, sql),TRUE)
+}
+
+######### add_index
+add_index <- function(conn, table, keys) UseMethod("add_index")
+
+add_index.default <- function(conn, table, keys, index = random_uuid()) {
+  keys <- glue::glue_collapse(keys, sep = ", ")
+  index <- glue::glue("IND_{index}")
+
+  sql <- glue::glue("
+    ALTER TABLE `{table}` ADD INDEX `{index}` ({keys})
+    ;")
+  #print(sql)
+  try(a <- DBI::dbExecute(conn, sql),TRUE)
+}
+
+`add_index.Microsoft SQL Server` <- function(conn, table, keys, index = random_uuid()) {
+  keys <- glue::glue_collapse(keys, sep = ", ")
+  index <- glue::glue("IND_{index}")
+
+  sql <- glue::glue("
+    CREATE UNIQUE CLUSTERED INDEX {index} ON {table} ({keys})
+    ;")
+  #print(sql)
+  try(a <- DBI::dbExecute(conn, sql),TRUE)
+}
+
 
 drop_all_rows <- function(conn, table) {
   a <- DBI::dbExecute(conn, glue::glue({
@@ -156,17 +450,16 @@ drop_all_rows <- function(conn, table) {
   }))
 }
 
-add_constraint <- function(conn, table, keys) {
-  primary_keys <- glue::glue_collapse(keys, sep = ", ")
-  if(!inherits(conn,"MySQL")){
-    primary_keys <- stringr::str_remove_all(primary_keys, " \\([0-9]*\\)")
-  }
-  sql <- glue::glue("
-          ALTER table {table}
-          ADD CONSTRAINT X_CONSTRAINT_X PRIMARY KEY ({primary_keys});")
-  a <- DBI::dbExecute(conn, sql)
-  # DBI::dbExecute(conn, "SHOW INDEX FROM x");
+drop_rows_where <- function(conn, table, condition) {
+  t0 <- Sys.time()
+  a <- DBI::dbExecute(conn, glue::glue({
+    "DELETE FROM {table} WHERE {condition};"
+  }))
+  t1 <- Sys.time()
+  dif <- round(as.numeric(difftime(t1, t0, units = "secs")), 1)
+  message(glue::glue("Deleted rows in {dif} seconds from {table}"))
 }
+
 
 #' get_db_connection
 #' @param driver driver
@@ -268,7 +561,6 @@ drop_table <- function(table, db = "sykdomspuls") {
 #' @import data.table
 #' @import R6
 #' @export schema
-#' @exportClass schema
 schema <- R6Class("schema",
   public = list(
     dt = NULL,
@@ -305,6 +597,19 @@ schema <- R6Class("schema",
     db_disconnect = function() {
       if (!is.null(self$conn)) DBI::dbDisconnect(self$conn)
     },
+    db_add_constraint = function(){
+      add_constraint(
+        conn = self$conn,
+        table = self$db_table,
+        keys = self$keys
+        )
+    },
+    db_drop_constraint = function(){
+      drop_constraint(
+        conn = self$conn,
+        table = self$db_table
+      )
+    },
     db_create_table = function() {
       create_tab <- TRUE
       if (DBI::dbExistsTable(self$conn, self$db_table)) {
@@ -318,8 +623,8 @@ schema <- R6Class("schema",
 
       if (create_tab) {
         message(glue::glue("Creating table {self$db_table}"))
-        create_table(self$conn, self$db_table, self$db_field_types)
-        add_constraint(self$conn, self$db_table, self$keys_with_length)
+        create_table(self$conn, self$db_table, self$db_field_types, self$keys)
+        self$db_add_constraint()
       }
     },
     db_drop_table = function() {
@@ -335,44 +640,34 @@ schema <- R6Class("schema",
       return(TRUE)
     },
     db_load_data_infile = function(newdata) {
-      a <- Sys.time()
       infile <- random_file(self$db_load_folder)
-      write_data_infile(
+      load_data_infile(
+        conn = self$conn,
+        db_config = self$db_config,
+        table = self$db_table,
         dt = newdata,
         file = infile
       )
-      load_data_infile(
-        conn = self$conn,
-        table = self$db_table,
-        dt = NULL,
-        file = infile
-      )
-      b <- Sys.time()
-      dif <- round(as.numeric(difftime(b, a, units = "secs")), 1)
-      message(glue::glue("Loaded {nrow(newdata)} rows in {dif} seconds"))
     },
     db_upsert_load_data_infile = function(newdata, drop_indexes = NULL, verbose = TRUE) {
-      a <- Sys.time()
       infile <- random_file(self$db_load_folder)
-      write_data_infile(
-        dt = newdata[, names(self$db_field_types), with = F],
-        file = infile
-      )
+
       upsert_load_data_infile(
         # conn = self$conn,
         db_config = self$db_config,
         table = self$db_table,
-        dt = NULL,
+        dt = newdata[, names(self$db_field_types), with = F],
         file = infile,
         fields = names(self$db_field_types),
+        keys = self$keys,
         drop_indexes = drop_indexes
       )
-      b <- Sys.time()
-      dif <- round(as.numeric(difftime(b, a, units = "secs")), 1)
-      if(verbose) message(glue::glue("Loaded {nrow(newdata)} rows in {dif} seconds"))
     },
     db_drop_all_rows = function() {
       drop_all_rows(self$conn, self$db_table)
+    },
+    db_drop_rows_where = function(condition){
+      drop_rows_where(self$conn, self$db_table, condition)
     },
     get_data = function(...) {
       dots <- dplyr::quos(...)
