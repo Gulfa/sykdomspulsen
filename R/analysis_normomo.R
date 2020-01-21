@@ -4,9 +4,9 @@
 #'
 #' @export
 analysis_normomo <-  function(data, argset, schema, ...){
-  # data <- tm_shortcut_data("analysis_normomo", index_plan=1)
-  # argset <- tm_shortcut_argset("analysis_normomo", index_plan=1, index_argset = 1)
-  # schema <- tm_shortcut_schema("analysis_normomo")
+  # data <- tm_get_data("analysis_normomo", index_plan=1)
+  # argset <- tm_get_argset("analysis_normomo", index_plan=1, index_argset = 1)
+  # schema <- tm_get_schema("analysis_normomo")
 
   d <- as.data.frame(data$raw[fhi::isoyear_n(DoR)<=argset$year_end])
   MOMO::SetOpts(
@@ -39,7 +39,7 @@ analysis_normomo <-  function(data, argset, schema, ...){
     data_to_save,
     location_code = argset$location_code
   )
-  schema$output$db_upsert_load_data_infile(data_clean, verbose = FALSE)
+  schema$output$db_upsert_load_data_infile(data_clean, verbose = T)
 }
 
 
