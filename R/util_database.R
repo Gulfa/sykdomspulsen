@@ -305,6 +305,15 @@ upsert_load_data_infile_internal.default <- function(
   keys,
   drop_indexes = NULL
 ) {
+  # conn <- schema$output$conn
+  # db_config <- config$db_config
+  # table <- schema$output$db_table
+  # dt <- data_clean
+  # file <- tempfile()
+  # fields <- schema$output$db_fields
+  # keys <- schema$output$keys
+  # drop_indexes <- NULL
+
   temp_name <- paste0("##",random_uuid())
 
   # ensure that the table is removed **FIRST** (before deleting the connection)

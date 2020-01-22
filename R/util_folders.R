@@ -1,12 +1,14 @@
 #' This function gets the right folder for results
-#' @param results_folder_name name of the results folder
-#' @param date the date of extraction
+#' @param type input, output, or archive
+#' @param tag Name of the second level file/folder
+#' @param ... Third level and beyond
 #' @export
-path <- function(type="output", results_folder_name, date, ...) {
+path <- function(type="output", tag, ...) {
+  stopifnot(type %in% c("input","output","archive"))
+
   fs::path("/",
     type,
-    results_folder_name,
-    date,
+    tag,
     ...
   )
 }

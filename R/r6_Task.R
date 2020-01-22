@@ -160,6 +160,7 @@ Task <- R6::R6Class(
 
         if(cores != 1){
           doFuture::registerDoFuture()
+
           if(length(self$plans)==1){
             # parallelize the inner loop
             future::plan(list(
@@ -167,7 +168,7 @@ Task <- R6::R6Class(
               future::multisession,
               workers = cores,
               earlySignal = TRUE
-              ))
+            ))
 
             parallel <- "plans=sequential, argset=multisession"
           } else {
@@ -177,31 +178,46 @@ Task <- R6::R6Class(
             parallel <- "plans=multisession, argset=sequential"
           }
         } else {
-          future::plan(future::sequential)
-          foreach::registerDoSEQ()
           data.table::setDTthreads()
 
           parallel <- "plans=sequential, argset=sequential"
         }
 
-        message(glue::glue("{parallel} with cores={self$cores} and chunk_size={self$chunk_size}"))
+        message(glue::glue("{parallel} with cores={cores} and chunk_size={self$chunk_size}"))
 
-        progressr::with_progress(
-          {
-            pb <- progressr::progressor(steps = self$num_argsets())
-            y <- foreach(x = self$plans, .options.future = list(chunk.size = self$chunk_size)) %dopar% {
-              if(cores != 1) data.table::setDTthreads(1)
+        if(cores == 1){
+          # not running in parallel
+          pb <- progress::progress_bar$new(total = self$num_argsets())
+          for(s in schema) s$db_connect()
+          for(x in self$plans){
+            x$set_progress(pb)
+            x$run_all(schema = schema)
+          }
+          for(s in schema) s$db_disconnect()
 
-              for(s in schema) s$db_connect()
-              x$set_progress(pb)
-              #x$run_all(schema = schema, chunk_size = self$chunk_size)
-              x$run_all(schema = schema)
-              for(s in schema) s$db_disconnect()
-            }
-          },
-          delay_stdout=FALSE,
-          delay_conditions = ""
-        )
+        } else {
+          # running in parallel
+          message("\n***** REMEMBER TO INSTALL SYKDOMSPULSEN *****")
+          message("***** OR ELSE THE PARALLEL PROCESSES WON'T HAVE ACCESS *****")
+          message("***** TO THE NECESSARY FUNCTIONS *****\n")
+
+          progressr::with_progress(
+            {
+              pb <- progressr::progressor(steps = self$num_argsets())
+              y <- foreach(x = self$plans, .options.future = list(chunk.size = self$chunk_size)) %dopar% {
+                data.table::setDTthreads(1)
+
+                for(s in schema) s$db_connect()
+                x$set_progressor(pb)
+                #x$run_all(schema = schema, chunk_size = self$chunk_size)
+                x$run_all(schema = schema)
+                for(s in schema) s$db_disconnect()
+              }
+            },
+            delay_stdout=FALSE,
+            delay_conditions = ""
+          )
+        }
 
         future::plan(future::sequential)
         foreach::registerDoSEQ()
