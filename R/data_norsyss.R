@@ -336,7 +336,7 @@ CleanData <- function(d,
 #' @import data.table
 #' @export IdentifyDatasets
 IdentifyDatasets <-
-  function(raw = list.files(fd::path("data_raw", package="sykdomspuls"), "^partially_formatted_"))
+  function(raw = list.files(path("input", "norsyss"), "^partially_formatted_"))
   {
     print(raw)
     ## res <- IdentifyAllDatasets(raw = raw, clean = clean)
@@ -369,7 +369,7 @@ data_norsyss <- function(data, argset, schema){
         fd::msg("No new data")
         return(FALSE)
   }
-  if (!fhi::file_stable(fd::path("data_raw", files$raw, package="sykdomspuls"))) {
+  if (!fhi::file_stable(path("input", "norsyss", files$raw))) {
     fd::msg(sprintf("Unstable file %s", files$raw))
     return(FALSE)
   }
@@ -377,8 +377,8 @@ data_norsyss <- function(data, argset, schema){
   fd::msg(sprintf("Cleaning file %s", files$raw))
   #EmailNotificationOfNewData(files$id)
 
-  d <- fread(fd::path("data_raw", files$raw, package="sykdomspuls"))
-
+  d <- fread(path("input", "norsyss", files$raw))
+  print(d)
   setnames(d,"date","x_date")
   dates <- unique(d[,"x_date"])
   dates[,date:=data.table::as.IDate(x_date)]
