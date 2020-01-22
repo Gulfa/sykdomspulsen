@@ -2,9 +2,9 @@
 #' @export config
 config <- new.env()
 
-config$name_computer <- "x"
-config$name_production <- "smhb"
-config$name_testing <- c("linux", "test", "temp")
+config$computer_name <- "x"
+config$production_name <- "smhb"
+config$testing_name <- c("linux", "test", "temp")
 
 config$is_production <- FALSE
 config$is_testing <- FALSE

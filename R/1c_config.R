@@ -6,6 +6,7 @@ set_config <- function() {
 
   set_computer_name()
   set_computer_type()
+  set_dev_options()
   set_border()
   set_db()
   set_tasks()
@@ -26,31 +27,37 @@ set_config <- function() {
     "65+" = c(65:105)
   )
 
-  if(!foreach::getDoParRegistered()){
-    future::plan(future::sequential)
-    foreach::registerDoSEQ()
-  }
+  # if(!foreach::getDoParRegistered()){
+  #   future::plan(future::sequential)
+  #   foreach::registerDoSEQ()
+  # }
 }
 
 set_computer_name <- function() {
   if (file.exists("/tmp/computer")) {
     con <- file("/tmp/computer", "r")
-    name_computer <- readLines(con, n = 1)
+    computer_name <- readLines(con, n = 1)
     close(con)
   } else {
-    name_computer <- "NO_NAME_FOUND"
+    computer_name <- "NO_NAME_FOUND"
   }
-  Sys.setenv(COMPUTER = name_computer)
-  config$name_computer <- name_computer
+  Sys.setenv(COMPUTER = computer_name)
+  config$computer_name <- computer_name
 }
 
 set_computer_type <- function() {
-  if (config$name_computer %in% config$name_production) {
+  if (config$computer_name %in% config$production_name) {
     config$is_production <- TRUE
-  } else if (config$name_computer %in% config$name_testing) {
+  } else if (config$computer_name %in% config$name_testing) {
     config$is_testing <- TRUE
   } else {
     config$is_dev <- TRUE
+  }
+}
+
+set_dev_options <- function(){
+  if(config$computer_name == "gunr"){
+    options(error = function() traceback())
   }
 }
 
@@ -61,3 +68,5 @@ set_border <- function() {
     config$border <- 2020
   }
 }
+
+

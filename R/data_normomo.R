@@ -1,7 +1,7 @@
 data_normomo_internal <- function(){
   if(config$is_production){
     data_grab <- glue::glue(
-      'get -r "ut" /data_raw/normomo/\n',
+      'get -r "ut" /input/normomo/\n',
       'rm ut/*'
     )
     data_grab_txt <- tempfile()
@@ -10,13 +10,13 @@ data_normomo_internal <- function(){
     cmd <- glue::glue(
       'sshpass -p{Sys.getenv("NORMOMO_EVRY_PW")} ',
       'sftp -o StrictHostKeyChecking=no -oBatchMode=no -b {data_grab_txt} {Sys.getenv("NORMOMO_EVRY_USER")}; ',
-      'mv /data_raw/normomo/ut/* /data_raw/normomo/; ',
-      'rmdir /data_raw/normomo/ut'
+      'mv /input/normomo/ut/* /input/normomo/; ',
+      'rmdir /input/normomo/ut'
     )
     system(cmd)
   }
 
-  files <- fs::dir_ls(fd::path("data_raw", package="normomo"), regexp="FHIDOD2_[0-9]+.txt$")
+  files <- fs::dir_ls(path("input", "normomo"), regexp="FHIDOD2_[0-9]+.txt$")
   file <- max(files)
   d <- data.table::fread(file)
 

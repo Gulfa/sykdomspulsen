@@ -4,12 +4,14 @@
 \alias{path}
 \title{This function gets the right folder for results}
 \usage{
-path(type = "output", results_folder_name, date, ...)
+path(type = "output", tag, ...)
 }
 \arguments{
-\item{results_folder_name}{name of the results folder}
+\item{type}{input, output, or archive}
 
-\item{date}{the date of extraction}
+\item{tag}{Name of the second level file/folder}
+
+\item{...}{Third level and beyond}
 }
 \description{
 This function gets the right folder for results

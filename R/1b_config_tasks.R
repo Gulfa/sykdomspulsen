@@ -68,7 +68,7 @@ set_tasks <- function() {
       plans = analysis_normomo_plans(),
       schema = c("output" = config$schema$results_normomo),
       cores = min(6, parallel::detectCores()),
-      chunk_size = 1
+      chunk_size = 3
     )
   )
 
@@ -79,7 +79,7 @@ set_tasks <- function() {
         db_table = "data_norsyss",
         type = "analysis",
         dependencies = c("data_norsyss"),
-        cores = 6,
+        cores = min(3, parallel::detectCores()),
         chunk_size= 100,
         action = "analysis_qp",
         filter = "tag_outcome=='gastro'",

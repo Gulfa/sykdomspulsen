@@ -34,9 +34,9 @@ analysis_normomo <-  function(data, argset, schema, ...){
 
   MOMO::RunMoMo()
 
-  data_to_save <- rbindlist(MOMO::dataExport$toSave, fill = TRUE)
+  data_dirty <- rbindlist(MOMO::dataExport$toSave, fill = TRUE)
   data_clean <- clean_exported_momo_data(
-    data_to_save,
+    data_dirty,
     location_code = argset$location_code
   )
   schema$output$db_upsert_load_data_infile(data_clean, verbose = T)
@@ -112,51 +112,111 @@ analysis_normomo_plans <- function(config){
 
 
 clean_exported_momo_data <- function(
-  data,
+  data_dirty,
   location_code
   ) {
 
-  data <- data[!is.na(Pnb), c("GROUP", "wk", "wk2", "YoDi", "WoDi", "Pnb", "nb", "nbc", "UPIb2", "UPIb4", "UPIc", "LPIc", "UCIc", "LCIc", "zscore"), with = F]
+  data_dirty <- data_dirty[
+    !is.na(Pnb),
+    c(
+      "GROUP",
+      "wk",
+      "wk2",
+      "YoDi",
+      "WoDi",
+      "Pnb",
+      "nb",
+      "nbc",
+      "UPIb2",
+      "UPIb4",
+      "UPIc",
+      "LPIc",
+      "UCIc",
+      "LCIc",
+      "zscore"
+    ),
+    with = F]
 
-  minCorrectedWeek <- min(data[nbc != nb]$wk)
+  minCorrectedWeek <- min(data_dirty[nbc != nb]$wk)
 
   # prediction interval
-  data[is.na(UPIc) | UPIc < nbc, UPIc := nbc]
-  data[is.na(LPIc) | LPIc > nbc, LPIc := nbc]
-
-  # making them slightly wider to hide the real information
-  # data[wk >= minCorrectedWeek & UPIc == 0, UPIc := 1]
-  # data[wk >= minCorrectedWeek & !is.na(UPIc), UPIc := UPIc + 3]
-  # data[wk >= minCorrectedWeek & !is.na(LPIc), LPIc := LPIc - 3]
-  data[LPIc < 0, LPIc := 0]
-
+  data_dirty[is.na(UPIc) | UPIc < nbc, UPIc := nbc]
+  data_dirty[is.na(LPIc) | LPIc > nbc, LPIc := nbc]
+  data_dirty[LPIc < 0, LPIc := 0]
   # prediction interval cant be below the real value!
-  data[is.na(LPIc) | LPIc < nb, LPIc := nb]
+  data_dirty[is.na(LPIc) | LPIc < nb, LPIc := nb]
 
   # remove prediction intervals before correction
-  data[wk < minCorrectedWeek, UPIc := nbc]
-  data[wk < minCorrectedWeek, LPIc := nbc]
+  data_dirty[wk < minCorrectedWeek, UPIc := nbc]
+  data_dirty[wk < minCorrectedWeek, LPIc := nbc]
 
-  data[, excess := nbc - Pnb]
+  setnames(data_dirty,c("LPIc","UPIc"),c("ncor_thresholdl0","ncor_thresholdu0"))
+  setnames(data_dirty, "nb", "n_obs")
+  setnames(data_dirty, "nbc", "ncor_est")
+  setnames(data_dirty, "Pnb", "baseline_expected")
+  setnames(data_dirty, "wk2", "yrwk")
 
-  setnames(data, "wk2", "yrwk")
-  setnames(data, "GROUP", "age")
-  data[, location_code := location_code]
+  data_dirty[,yrwk:=as.character(yrwk)]
+  setnames(data_dirty, "YoDi", "year")
+  setnames(data_dirty, "WoDi", "week")
+  setnames(data_dirty, "zscore", "ncor_zscore")
 
-  data[location_code == "norway", location_code := "norge"]
+  data_dirty[, location_code := location_code]
+  data_dirty[location_code == "norway", location_code := "norge"]
+  data_dirty[, age := dplyr::case_when(
+    GROUP == "0to4" ~ "0-4",
+    GROUP == "5to14" ~ "5-14",
+    GROUP == "15to64" ~ "15-64",
+    GROUP == "65P" ~ "65+",
+    GROUP == "Total" ~ "totalt"
+  )]
 
-  # creating pretty thesholds
-  data[, thresholdp_0 := Pnb - abs(UPIb2 - Pnb)]
-  data[, thresholdp_1 := UPIb2]
-  data[, thresholdp_2 := UPIb4]
-  data[, excessp := pmax(nbc - thresholdp_1, 0)]
-  data[, status := "normal"]
-  data[nbc > thresholdp_1, status := "medium"]
-  data[nbc > thresholdp_2, status := "high"]
-  data[fhidata::days, on = "yrwk", date := sun]
+  # creating thesholds
+  data_dirty[, baseline_thresholdl0 := baseline_expected - abs(UPIb2 - baseline_expected)]
+  setnames(data_dirty, "UPIb2", "baseline_thresholdu0")
+  setnames(data_dirty, "UPIb4", "baseline_thresholdu1")
+  data_dirty[, ncor_excess := pmax(ncor_est - baseline_thresholdu0, 0)]
+  data_dirty[, ncor_status := "normal"]
+  data_dirty[ncor_est > baseline_thresholdu0, ncor_status := "medium"]
+  data_dirty[ncor_est > baseline_thresholdu1, ncor_status := "high"]
+  data_dirty[fhidata::days, on = "yrwk", date := sun]
 
-  return(data)
+  data_dirty[,granularity_time := "day"]
+  data_dirty[,granularity_geo := dplyr::case_when(
+    location_code == "norge" ~ "nation",
+    TRUE ~ "county"
+  )]
+  data_dirty[,border := config$border]
+  data_dirty[,sex:="totalt"]
+  data_dirty[,season:=fhi::season(yrwk)]
+  data_dirty[,x:=fhi::x(week)]
+
+  data_dirty <- data_dirty[,c(
+    "granularity_time",
+    "granularity_geo",
+    "location_code",
+    "border",
+    "age",
+    "sex",
+    "season",
+    "year",
+    "week",
+    "yrwk",
+    "x",
+    "date",
+    "n_obs",
+    "ncor_est",
+    "ncor_thresholdl0",
+    "ncor_thresholdu0",
+    "ncor_zscore",
+    "ncor_status",
+    "ncor_excess",
+    "baseline_expected",
+    "baseline_thresholdl0",
+    "baseline_thresholdu0",
+    "baseline_thresholdu1"
+  )]
+
+  return(data_dirty)
 }
-
-
 
