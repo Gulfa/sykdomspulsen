@@ -172,9 +172,9 @@ QuasipoissonTrainPredictData <- function(
   consult <- NULL
   n <- NULL
   n_expected <- NULL
-  n_thresholdu0 <- NULL
-  n_thresholdu1 <- NULL
-  n_thresholdu2 <- NULL
+  n_baseline_thresholdu0 <- NULL
+  n_baseline_thresholdu1 <- NULL
+  n_baseline_thresholdu2 <- NULL
   n_zscore <- NULL
   cumE1 <- NULL
   cumL1 <- NULL
@@ -246,15 +246,12 @@ QuasipoissonTrainPredictData <- function(
   regression_diagnostics <- new_diagnostics_df(n_row = 1)
   regression_diagnostics$failed <- 1
   if (poisreg$failed) {
-    datasetPredict[, n_expected := 0.0]
-    datasetPredict[, n_thresholdu0 := 5.0]
-    datasetPredict[, n_thresholdu1 := 10.0]
-    datasetPredict[, n_thresholdu2 := 15.0]
+    datasetPredict[, n_baseline_expected := 0.0]
+    datasetPredict[, n_baseline_thresholdu0 := 5.0]
+    datasetPredict[, n_baseline_thresholdu1 := 10.0]
+    datasetPredict[, n_baseline_thresholdu2 := 15.0]
     datasetPredict[, n_zscore := 0.0]
 
-    datasetPredict[, cumE1 := 0.0]
-    datasetPredict[, cumL1 := -5.0]
-    datasetPredict[, cumU1 := 5.0]
     datasetPredict[, failed := TRUE]
   } else {
     # REFIT THE REGRESSION USING RESIDUAL WEIGHTS (TO DOWNWEIGHT PREVIOUS OUTBREAKS):
@@ -279,30 +276,30 @@ QuasipoissonTrainPredictData <- function(
     }
     # CALCULATE SIGNAL THRESHOLD (prediction interval from Farrington 1996):
     pred <- predict(poisreg$fit, type = "response", se.fit = T, newdata = datasetPredict)
-    datasetPredict[, n_expected := pred$fit]
-    datasetPredict[, n_thresholdu0 := FarringtonThreshold(pred, phi = dispersion_parameter, z = 2, skewness.transform = "2/3")]
-    datasetPredict[, n_thresholdu1 := FarringtonThreshold(pred, phi = dispersion_parameter, z = 4, skewness.transform = "2/3")]
-    datasetPredict[, n_thresholdu2 := FarringtonThreshold(pred, phi = dispersion_parameter, z = 6, skewness.transform = "2/3")]
+    datasetPredict[, n_baseline_expected := pred$fit]
+    datasetPredict[, n_baseline_thresholdu0 := FarringtonThreshold(pred, phi = dispersion_parameter, z = 2, skewness.transform = "2/3")]
+    datasetPredict[, n_baseline_thresholdu1 := FarringtonThreshold(pred, phi = dispersion_parameter, z = 4, skewness.transform = "2/3")]
+    datasetPredict[, n_baseline_thresholdu2 := FarringtonThreshold(pred, phi = dispersion_parameter, z = 6, skewness.transform = "2/3")]
     datasetPredict[, n_zscore := FarringtonZscore(pred, phi = dispersion_parameter, z = 6, skewness.transform = "2/3", y = n)]
 
     datasetPredict[, stderr := FarringtonSEinGammaSpace(pred, phi = dispersion_parameter, z = 6, skewness.transform = "2/3")]
-    datasetPredict[, cumE1 := n^(2 / 3) - n_expected^(2 / 3)]
-    datasetPredict[, cumL1 := (cumE1 - 2 * stderr)^(3 / 2)]
-    datasetPredict[, cumU1 := (cumE1 + 2 * stderr)^(3 / 2)]
-    datasetPredict[, cumE1 := cumE1^(3 / 2)]
+    ## datasetPredict[, cumE1 := n^(2 / 3) - n_baseline_expected^(2 / 3)]
+    ## datasetPredict[, cumL1 := (cumE1 - 2 * stderr)^(3 / 2)]
+    ## datasetPredict[, cumU1 := (cumE1 + 2 * stderr)^(3 / 2)]
+    ## datasetPredict[, cumE1 := cumE1^(3 / 2)]
 
-    datasetPredict[, revcumE1 := n_expected^(2 / 3) - n^(2 / 3)]
-    datasetPredict[, revcumL1 := (revcumE1 - 2 * stderr)^(3 / 2)]
-    datasetPredict[, revcumU1 := (revcumE1 + 2 * stderr)^(3 / 2)]
-    datasetPredict[, revcumE1 := revcumE1^(3 / 2)]
+    ## datasetPredict[, revcumE1 := n_baseline_expected^(2 / 3) - n^(2 / 3)]
+    ## datasetPredict[, revcumL1 := (revcumE1 - 2 * stderr)^(3 / 2)]
+    ## datasetPredict[, revcumU1 := (revcumE1 + 2 * stderr)^(3 / 2)]
+    ## datasetPredict[, revcumE1 := revcumE1^(3 / 2)]
 
-    datasetPredict[is.nan(cumE1), cumE1 := -revcumE1]
-    datasetPredict[is.nan(cumL1), cumL1 := -revcumU1]
-    datasetPredict[is.nan(cumU1), cumU1 := -revcumL1]
-    datasetPredict[, revcumE1 := NULL]
-    datasetPredict[, revcumL1 := NULL]
-    datasetPredict[, revcumU1 := NULL]
-    datasetPredict[, stderr := NULL]
+    ## datasetPredict[is.nan(cumE1), cumE1 := -revcumE1]
+    ## datasetPredict[is.nan(cumL1), cumL1 := -revcumU1]
+    ## datasetPredict[is.nan(cumU1), cumU1 := -revcumL1]
+    ## datasetPredict[, revcumE1 := NULL]
+    ## datasetPredict[, revcumL1 := NULL]
+    ## datasetPredict[, revcumU1 := NULL]
+    ## datasetPredict[, stderr := NULL]
     datasetPredict[, failed := FALSE]
   }
 
@@ -415,13 +412,13 @@ FarringtonZscore <- function(pred, phi, alpha = NULL, z = NULL, skewness.transfo
 DetermineStatus <- function(data) {
   n_status <- NULL
   n <- NULL
-  n_thresholdu0 <- NULL
-  n_thresholdu1 <- NULL
+  n_baseline_thresholdu0 <- NULL
+  n_baseline_thresholdu1 <- NULL
 
   # create "normal", "medium", "high" categories
   data[, n_status := "Normal"]
-  data[n > 1 & n > n_thresholdu0, n_status := "Medium"]
-  data[n > 1 & n > n_thresholdu1, n_status := "High"]
+  data[n > 1 & n > n_baseline_thresholdu0, n_status := "Medium"]
+  data[n > 1 & n > n_baseline_thresholdu1, n_status := "High"]
 }
 
 #' clean_post_analysis
@@ -451,8 +448,8 @@ clean_post_analysis <- function(res, argset) {
   ## res[stack, on = "uuid", v := v]
 
   # make threshold2 minimum of 2.5 and threshold4 minimum of 3
-  res[n_thresholdu0 < 2.5, n_thresholdu0 := 2.5]
-  res[n_thresholdu1 < 3, n_thresholdu1 := 3]
+  res[n_baseline_thresholdu0 < 2.5, n_baseline_thresholdu0 := 2.5]
+  res[n_baseline_thresholdu1 < 3, n_baseline_thresholdu1 := 3]
 
   # create "normal", "medium", "high" categories
   DetermineStatus(res)

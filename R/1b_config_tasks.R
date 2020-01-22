@@ -6,6 +6,20 @@ set_tasks <- function() {
   config$tasks$add_task(
     task_from_config(
       list(
+        name = "data_pre_norsyss",
+        type = "data",
+        action = "data_pre_norsyss",
+        schema = list(),
+        args = list(
+          date_from = "2019-01-01"
+        )
+      )
+    )
+  )
+  
+  config$tasks$add_task(
+    task_from_config(
+      list(
         name = "data_normomo",
         type = "data",
         action = "data_normomo",
@@ -13,7 +27,6 @@ set_tasks <- function() {
       )
     )
   )
-
   config$tasks$add_task(
     task_from_config(
       list(
@@ -79,7 +92,7 @@ set_tasks <- function() {
         db_table = "data_norsyss",
         type = "analysis",
         dependencies = c("data_norsyss"),
-        cores = min(3, parallel::detectCores()),
+        cores = min(10, parallel::detectCores()),
         chunk_size= 100,
         action = "analysis_qp",
         filter = "tag_outcome=='gastro'",

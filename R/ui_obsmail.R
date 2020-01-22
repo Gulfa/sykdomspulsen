@@ -7,8 +7,6 @@ ui_obsmail<- function(data, argset, schema) {
   max_date <- max_date_q$m
   yrwks <- fhi::isoyearweek(max_date - c(0, 7, 14, 21))
   tag_relevant <- argset$tags
-  print(yrwks)
-  print(tag_relevant)
   results <- schema$input$dplyr_tbl() %>%
     dplyr::filter(granularity_time == "weekly") %>%
     dplyr::filter(yrwk %in% !!yrwks) %>%
@@ -25,7 +23,6 @@ ui_obsmail<- function(data, argset, schema) {
   results <- results[norway_locations(), on=c("location_code"="municip_code"), nomatch=0]
   
   setorder(results, tag, location_code, age, yrwk)
-  print(results)
   results[, week_id := 1:.N, by = .(tag, location_code, age)]
   results[, location_name:=get_location_name(location_code)]
   alerts <- sykdomspuls_obs_get_emails()
@@ -169,15 +166,14 @@ EmailExternalGenerateTable <- function(results, xtag) {
     return(sprintf("<br><b>%s:</b> <span style='color:red;text-decoration:underline;'>Ingen utbrudd registrert</span><br><br>", sykdomspuls::CONFIG$SYNDROMES[tag == xtag]$namesLong))
   }
 
-  r_long[, excessp := ceiling(pmax(0, n - n_thresholdu0))]
+  r_long[, excessp := ceiling(pmax(0, n - n_baseline_thresholdu0))]
   r_long[, n_zscorep := fhiplot::format_nor(n_zscore, 1)]
 
   r_wide <- dcast.data.table(
     r_long,
     tag_pretty + link + age ~ week_id,
-    value.var = c("n", "excessp", "n_thresholdu0", "n_zscore", "n_zscorep", "n_status")
+    value.var = c("n", "excessp", "n_baseline_thresholdu0", "n_zscore", "n_zscorep", "n_status")
   )
-  print(r_wide)
   setorder(r_wide, -n_zscore_4)
 
   yrwks <- unique(r_long[, c("week_id", "yrwk")])
