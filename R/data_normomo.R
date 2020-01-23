@@ -18,6 +18,14 @@ data_normomo_internal <- function(){
 
   files <- fs::dir_ls(path("input", "normomo"), regexp="FHIDOD2_[0-9]+.txt$")
   file <- max(files)
+  date_extracted <- stringr::str_extract(file, "[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]")
+  date_extracted <- glue::glue(
+    "{yyyy}-{mm}-{dd}",
+    yyyy = stringr::str_sub(date_extracted, 1, 4),
+    mm = stringr::str_sub(date_extracted, 5, 6),
+    dd = stringr::str_sub(date_extracted, 7, 8)
+    )
+  date_extracted <- as.Date(date_extracted)
   d <- data.table::fread(file)
 
   d[, DoD := as.Date(as.character(DODS_DATO), format = "%Y%m%d")]
@@ -62,8 +70,9 @@ data_normomo_internal <- function(){
   setnames(d, "county_code_current", "location_code")
 
   d[,uuid:=1:.N]
+  d[, date_extracted:=date_extracted]
 
-
+  return(d)
 }
 
 #' DataNormomo

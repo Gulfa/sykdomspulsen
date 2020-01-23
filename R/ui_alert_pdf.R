@@ -53,7 +53,6 @@ ui_alert_pdf <- function(data, argset, schema) {
       envir=new.env()
     )
   }
-  print(d)
   tab <- huxtable::hux(
     Syndrom = d$name_long,
     Kommunenavn = d$location_name,

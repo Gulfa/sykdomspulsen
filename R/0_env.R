@@ -12,6 +12,8 @@ config$is_dev <- FALSE
 
 config$is_initialized <- FALSE
 
+config$verbose <- FALSE
+
 #' Environment to store db connections
 #' @export connections
 connections <- new.env()

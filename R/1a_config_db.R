@@ -19,16 +19,17 @@ set_db <- function(){
         "DoR" = "DATE",
         "DoB" = "DATE",
         "age" = "INTEGER",
-        "location_code" = "TEXT"
+        "location_code" = "TEXT",
+        "date_extracted" = "DATE"
       ),
       db_load_folder = "/xtmp/",
       keys =  c(
         "uuid"
       )
     ),
-    results_normomo = schema$new(
+    results_normomo_standard = schema$new(
       db_config = config$db_config,
-      db_table = "normomo_standard_results",
+      db_table = "results_normomo_standard",
       db_field_types =  c(
         "granularity_time" = "TEXT",
         "granularity_geo" = "TEXT",
@@ -52,10 +53,12 @@ set_db <- function(){
         "ncor_status" = "TEXT",
         "ncor_excess" = "DOUBLE",
 
-        "baseline_expected" = "DOUBLE",
-        "baseline_thresholdl0" = "DOUBLE",
-        "baseline_thresholdu0" = "DOUBLE",
-        "baseline_thresholdu1" = "DOUBLE"
+        "ncor_baseline_expected" = "DOUBLE",
+        "ncor_baseline_thresholdl0" = "DOUBLE",
+        "ncor_baseline_thresholdu0" = "DOUBLE",
+        "ncor_baseline_thresholdu1" = "DOUBLE",
+
+        "forecast" = "BOOLEAN"
       ),
       keys = c(
         "granularity_time",

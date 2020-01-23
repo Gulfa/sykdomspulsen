@@ -1,3 +1,20 @@
+data_function_factory <- function(table_name, filter){
+  force(table_name)
+  force(filter)
+  function() {
+    if (is.na(filter)) {
+      d <- tbl(table_name) %>%
+        dplyr::collect() %>%
+        latin1_to_utf8()
+    } else {
+      d <- tbl(table_name) %>%
+        dplyr::filter(!!!rlang::parse_exprs(filter)) %>%
+        dplyr::collect() %>%
+        latin1_to_utf8()
+    }
+  }
+}
+
 #' task_from_config
 #'
 #' @export
@@ -43,6 +60,7 @@ task_from_config <- function(conf) {
 
       filters <- list()
       for (t in names(conf$for_each)) {
+        message(glue::glue("{Sys.time()} Starting pulling plan data for {t} from {table_name}"))
         if (conf$for_each[t] == "all") {
           filter <- get_list(conf, "filter", default = "")
           table <- tbl(table_name)
@@ -57,9 +75,11 @@ task_from_config <- function(conf) {
           options <- conf$for_each[[t]]
         }
         filters[[t]] <- options
+        message(glue::glue("{Sys.time()} Finished pulling plan data for {t} from {table_name}"))
       }
 
       filters <- do.call(tidyr::crossing, filters)
+
       for (i in 1:nrow(filters)) {
         current_plan <- plnr::Plan$new()
         fs <- c()
@@ -78,7 +98,8 @@ task_from_config <- function(conf) {
         if (extra_filter != "") {
           filter <- paste(filter, extra_filter, sep = " & ")
         }
-        add_data_helper(current_plan, filter, table_name)
+        current_plan$add_data(name = "data", fn = data_function_factory(table_name, filter))
+
         if ("args" %in% names(conf)) {
           arguments <- c(arguments, conf$args)
         }
@@ -89,26 +110,6 @@ task_from_config <- function(conf) {
     }
   }
   return(task)
-}
-
-
-add_data_helper <- function(current_plan, filter, table_name){
-  force(filter)
-  force(current_plan)
-  force(table_name)
-  current_plan$add_data(name = "data", fn = function() {
-    if (is.na(filter)) {
-      d <- tbl(table_name) %>%
-        dplyr::collect() %>%
-        latin1_to_utf8()
-    } else {
-      d <- tbl(table_name) %>%
-        dplyr::filter(!!!rlang::parse_exprs(filter)) %>%
-        dplyr::collect() %>%
-        latin1_to_utf8()
-    }
-    return(d)
-  })
 }
 
 #' Task
@@ -128,10 +129,11 @@ Task <- R6::R6Class(
     chunk_size = 100,
     name = NULL,
     update_plans_fn = NULL,
-    initialize = function(name, type, plans, schema, cores = 1, chunk_size = 100) {
+    initialize = function(name, type, plans=NULL, update_plans_fn=NULL, schema, cores = 1, chunk_size = 100) {
       self$name <- name
       self$type <- type
       self$plans <- plans
+      self$update_plans_fn <- update_plans_fn
       self$schema <- schema
       self$cores <- cores
       self$chunk_size <- chunk_size
@@ -181,7 +183,7 @@ Task <- R6::R6Class(
             parallel <- "plans=sequential, argset=multisession"
           } else {
             # parallelize the outer loop
-            future::plan(future::multisession, workers = cores, earlySignal = TRUE)
+            future::plan(future::multisession, workers = cores)
 
             parallel <- "plans=multisession, argset=sequential"
           }
@@ -195,7 +197,11 @@ Task <- R6::R6Class(
 
         if(cores == 1){
           # not running in parallel
-          pb <- progress::progress_bar$new(total = self$num_argsets())
+          pb <- progress::progress_bar$new(
+            format = "[:bar] :current/:total (:percent) in :elapsedfull, eta: :eta",
+            clear = FALSE,
+            total = self$num_argsets()
+          )
           for(s in schema) s$db_connect()
           for(x in self$plans){
             x$set_progress(pb)
@@ -220,6 +226,14 @@ Task <- R6::R6Class(
                 #x$run_all(schema = schema, chunk_size = self$chunk_size)
                 x$run_all(schema = schema)
                 for(s in schema) s$db_disconnect()
+
+                #################################
+                # NEVER DELETE gc()             #
+                # IT CAUSES 2x SPEEDUP          #
+                # AND 10x MEMORY EFFICIENCY     #
+                gc()                            #
+                #################################
+                1
               }
             },
             delay_stdout=FALSE,

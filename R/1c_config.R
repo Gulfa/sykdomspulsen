@@ -66,9 +66,9 @@ set_computer_type <- function() {
 }
 
 set_dev_options <- function(){
-  if(config$computer_name == "gunr"){
-    options(error = function() traceback())
-  }
+  # if(config$computer_name == "gunr"){
+  #   options(error = function() traceback())
+  # }
 }
 
 set_border <- function() {

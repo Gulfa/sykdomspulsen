@@ -106,7 +106,7 @@ load_data_infile.default <- function(conn = NULL, db_config = NULL, table, dt = 
 
   t1 <- Sys.time()
   dif <- round(as.numeric(difftime(t1, t0, units = "secs")), 1)
-  message(glue::glue("Uploaded {nrow(dt)} rows in {dif} seconds to {table}"))
+  if(config$verbose) message(glue::glue("Uploaded {nrow(dt)} rows in {dif} seconds to {table}"))
 
   invisible()
 }
@@ -189,7 +189,7 @@ load_data_infile.default <- function(conn = NULL, db_config = NULL, table, dt = 
 
   b <- Sys.time()
   dif <- round(as.numeric(difftime(b, a, units = "secs")), 1)
-  message(glue::glue("Uploaded {nrow(dt)} rows in {dif} seconds to {table}"))
+  if(config$verbose) message(glue::glue("Uploaded {nrow(dt)} rows in {dif} seconds to {table}"))
 
   invisible()
 }
@@ -290,7 +290,7 @@ upsert_load_data_infile_internal.default <- function(
 
   t1 <- Sys.time()
   dif <- round(as.numeric(difftime(t1, t0, units = "secs")), 1)
-  message(glue::glue("Upserted {nrow(dt)} rows in {dif} seconds from {temp_name} to {table}"))
+  if(config$verbose) message(glue::glue("Upserted {nrow(dt)} rows in {dif} seconds from {temp_name} to {table}"))
 
   invisible()
 }
@@ -366,7 +366,7 @@ upsert_load_data_infile_internal.default <- function(
 
   b <- Sys.time()
   dif <- round(as.numeric(difftime(b, a, units = "secs")), 1)
-  message(glue::glue("Upserted {nrow(dt)} rows in {dif} seconds from {temp_name} to {table}"))
+  if(config$verbose) message(glue::glue("Upserted {nrow(dt)} rows in {dif} seconds from {temp_name} to {table}"))
 
   invisible()
 }
@@ -388,6 +388,7 @@ create_table.default <- function(conn, table, fields, keys=NULL) {
   fields_new <- fields
   fields_new[fields == "TEXT"] <- "NVARCHAR (50)"
   fields_new[fields == "DOUBLE"] <- "FLOAT"
+  fields_new[fields == "BOOLEAN"] <- "BIT"
 
   if(!is.null(keys)) fields_new[names(fields_new) %in% keys] <- paste0(fields_new[names(fields_new) %in% keys], " NOT NULL")
   sql <- DBI::sqlCreateTable(conn, table, fields_new,
@@ -412,7 +413,7 @@ add_constraint.default <- function(conn, table, keys) {
   # DBI::dbExecute(conn, "SHOW INDEX FROM x");
   t1 <- Sys.time()
   dif <- round(as.numeric(difftime(t1, t0, units = "secs")), 1)
-  message(glue::glue("Added constraint {constraint} in {dif} seconds to {table}"))
+  if(config$verbose) message(glue::glue("Added constraint {constraint} in {dif} seconds to {table}"))
 }
 
 ######### drop_constraint
@@ -466,7 +467,7 @@ drop_rows_where <- function(conn, table, condition) {
   }))
   t1 <- Sys.time()
   dif <- round(as.numeric(difftime(t1, t0, units = "secs")), 1)
-  message(glue::glue("Deleted rows in {dif} seconds from {table}"))
+  if(config$verbose) message(glue::glue("Deleted rows in {dif} seconds from {table}"))
 }
 
 
@@ -648,7 +649,7 @@ schema <- R6Class("schema",
       }
       return(TRUE)
     },
-    db_load_data_infile = function(newdata) {
+    db_load_data_infile = function(newdata, verbose = TRUE) {
       infile <- random_file(self$db_load_folder)
       load_data_infile(
         conn = self$conn,
