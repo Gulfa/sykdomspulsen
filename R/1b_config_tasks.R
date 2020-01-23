@@ -239,7 +239,7 @@ set_tasks <- function() {
         dependencies = c("simple_analysis_msis"),
         args = list(
           tag = "influensa",
-          icpc2 = "R60",
+          icpc2 = "R80",
           contactType = "Legekontakt",
           folder_name = "mem_influensa",
           outputs = c("charts", "county_sheet", "region_sheet", "norway_sheet")
@@ -258,9 +258,24 @@ set_tasks <- function() {
         action="ui_external_api",
         args = list(
           tags = c("gastro"),
-          short = c("Mage-tarm"),
-          long = c("Mage-tarminfeksjoner"),
+          short = unlist(config$def$short_names[c("gastro")]),
+          long =  unlist(config$def$long_names[c("gastro")]),
           age = config$def$age$norsyss
+        )
+      )
+    )
+  )
+  config$tasks$add_task(
+    task_from_config(
+      list(
+        name = "ui_alert_pdf",
+        type = "data",
+        schema=list(input=config$schema$results_qp),
+        action="ui_alert_pdf",
+        args = list(
+          tags = c("gastro"),
+          name_short = config[["def"]]$short_names,
+          name_long = config[["def"]]$long_names
         )
       )
     )

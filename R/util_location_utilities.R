@@ -16,3 +16,9 @@ norway_locations <- function ()
         return(fhidata::norway_locations_b2020)
     }
 }
+
+get_municips_same_county <- function(municip){
+  x_county_code <- paste0("county", substr(municip, 8, 9))
+  return(norway_locations()[county_code == x_county_code, municip_code])
+
+}
