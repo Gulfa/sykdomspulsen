@@ -65,10 +65,10 @@ set_tasks <- function() {
     Task$new(
       name = "analysis_normomo",
       type = "analysis",
-      plans = analysis_normomo_plans(),
-      schema = c("output" = config$schema$results_normomo),
+      update_plans_fn = analysis_normomo_plans,
+      schema = c("output" = config$schema$results_normomo_standard),
       cores = min(6, parallel::detectCores()),
-      chunk_size = 3
+      chunk_size = 1
     )
   )
 
@@ -79,7 +79,7 @@ set_tasks <- function() {
         db_table = "data_norsyss",
         type = "analysis",
         dependencies = c("data_norsyss"),
-        cores = min(3, parallel::detectCores()),
+        cores = min(6, parallel::detectCores()),
         chunk_size= 100,
         action = "analysis_qp",
         filter = "tag_outcome=='gastro'",
@@ -281,5 +281,22 @@ set_tasks <- function() {
     )
   )
 
+ config$tasks$add_task(
+   task_from_config(
+     list(
+       name = "ui_normomo_thresholds_1yr_5yr",
+       type = "ui",
+       action = "ui_normomo_thresholds_1yr_5yr",
+       db_table = "results_normomo_standard",
+       schema = list(input=config$schema$results_normomo_standard),
+       for_each = list("location_code" = "all", "age" = "all"),
+       dependencies = c("results_normomo_standard"),
+       args = list(
+         filename = "{tag}_{location_code}_{age}_{yrwk_minus_1}.png",
+         folder = "normomo/{today}/graphs_status"
+       )
+     )
+   )
+ )
 
 }
