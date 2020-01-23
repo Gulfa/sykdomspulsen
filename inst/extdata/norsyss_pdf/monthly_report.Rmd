@@ -1,0 +1,14 @@
+---
+params:
+  date: "`r format(Sys.time(), '%d.%m.%Y')`"
+  location_code: "county01"
+  tag: "gastro"
+header: "Sist oppdatert: `r format(Sys.time(), '%d.%m.%Y')`"
+output: fhi::sykdompulspdf_document
+fig_caption: true
+---
+```{r results = "asis", echo=FALSE, message=FALSE, warning=FALSE}
+rmd <- knitr::knit_expand(glue::glue("{params$location_code}_child_{params$tag}.Rmd"), location_code = params$location_code, x_tag = params$tag)
+rendered <- knitr::knit(text = rmd, quiet = TRUE, envir = new.env())
+cat(rendered, sep = "\n")
+``` 

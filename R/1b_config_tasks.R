@@ -283,6 +283,21 @@ set_tasks <- function() {
   config$tasks$add_task(
     task_from_config(
       list(
+        name = "ui_norsyss_pdf",
+        type = "data",
+        schema=list(input=config$schema$results_qp),
+        action="ui_norsyss_pdf",
+        args = list(
+          tags = c("gastro"),
+          name_short = config[["def"]]$short_names,
+          name_long = config[["def"]]$long_names
+        )
+      )
+    )
+  )
+  config$tasks$add_task(
+    task_from_config(
+      list(
         name = "ui_archive_results_qp",
         type = "data",
         schema=list(input=config$schema$results_qp),

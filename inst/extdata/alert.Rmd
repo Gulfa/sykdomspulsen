@@ -1,0 +1,225 @@
+---
+title: "`r params$name_long` i `r sykdomspulsen::get_location_name(params$location_code)` og nærområdene"
+sub_title: "Sykdomspulsen, `r lubridate::today()`"
+header: "`r params$name_long` i `r sykdomspulsen::get_location_name(params$location_code)` og nærområdene"
+footer: "Sykdomspulsen, Folkehelseinstituttet, Oslo, Norge"
+output:
+  fhi::fhi_document
+params:
+  location_code: municip1103
+  tag: gastro
+  name_long: Magetarm
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+x_municip_code <- params$location_code
+x_tag <- params$tag
+x_municip_name <- sykdomspulsen::get_location_name(x_municip_code)
+
+library(data.table)
+library(ggplot2)
+library(kableExtra)
+
+municips <- sykdomspulsen::get_municips_same_county(x_municip_code)
+municips <- c(municips, paste0("county", substr(x_municip_code, 8, 9)))
+d <- fd::tbl("results_qp") %>% 
+  dplyr::filter(
+    tag_outcome== !! x_tag & 
+    location_code %in% !!  municips & 
+    granularity_time=="weekly") %>% 
+  dplyr::collect() %>%
+  fd::latin1_to_utf8()
+d <- d[order(date)]
+yrwks_summary <- rev(unique(d[,yrwk]))[1:12]
+yrwks_lines <- rev(unique(d[,yrwk]))[1:25]
+
+d <- d[yrwk %in% yrwks_lines]
+
+d[,status:=factor(
+  n_status,
+  levels=c("Normal","Medium","High")
+)]
+
+county_order <- sykdomspulsen::norway_locations()[municip_code %in% d$location_code]
+county_order <- rbind(county_order[.N],county_order[-.N])
+county_order <- county_order[.N:1]
+county_name <- sykdomspulsen::get_location_name(paste0("county", substr(x_municip_code, 8, 9)))
+d[,location_name:=factor(get_location_name(location_code), levels=c(
+  unique(county_order$municip_name),county_name))]
+
+
+
+d[,age:=factor(age,levels=rev(names(sykdomspulsen::config$def$age$norsyss)))]
+d[,yrwkdate:=glue::glue("{yrwk} ({date})",yrwk=yrwk,date=date)]
+
+analyses_municip <- unique(d[yrwk %in% yrwks_summary[1] & n_status!="Normal", location_code])
+analyses_municip <- c(x_municip_code, analyses_municip[analyses_municip!=x_municip_code])
+```
+
+```{r include=FALSE}
+tiles_municip <- function(pd){
+  name_display <- pd$location_name[1]
+  if(pd$granularity_geo[1] == "county"){
+    title <- glue::glue("Fylke: {name_display}")
+  } else {
+    title <- glue::glue("Kommune: {name_display}")
+  }
+  
+  q <- ggplot(pd, aes(x = yrwkdate, y = age, fill = status))
+  q <- q + geom_tile(colour = "black")
+  q <- q + scale_fill_manual("",
+    values = c(
+      "Normal" = "#91bfdb", 
+      "Medium" = "#ffffbf", 
+      "High" = "#fc8d59"
+      ),
+    labels = c(
+      "Forventet/lavere\nenn forventet",
+      "H\u00F8yere\nenn forventet",
+      "Betydelig h\u00F8yere\nenn forventet"
+    ),
+    drop = FALSE
+  )
+  q <- q + labs(title = title)
+  q <- q + scale_x_discrete("\u00C5r-uke (dato)", expand=c(0,0))
+  q <- q + scale_y_discrete("", expand=c(0,0))
+  #q <- q + labs(caption = sprintf("Sist oppdatert: %s", strftime(dateData, format = "%d/%m/%Y")))
+  q <- q + fhiplot::theme_fhi_basic(legend_position = "bottom")
+  q <- q + fhiplot::set_x_axis_vertical()
+  print(q)
+}
+
+lines_municip <- function(pd){
+  name_display <- pd$location_name[1]
+  if(pd$granularity_geo[1] == "county"){
+    title <- glue::glue("Fylke: {name_display}")
+  } else {
+    title <- glue::glue("Kommune: {name_display}")
+  }
+ 
+  pd[,age:=factor(age,levels=names(sykdomspulsen::config$def$age$norsyss))]
+  pd[,xval:=1:.N, by =age]
+
+  labs <- pd[age == "Totalt"]
+  labs <- labs[seq(1,.N,2),c("xval","yrwkdate","yrwk")]
+  
+  pd_nor <- pd[n_status=="Normal"]
+  pd_med <- pd[n_status=="Medium"]
+  pd_hig <- pd[n_status=="High"]
+
+  q <- ggplot(pd, aes(x=xval))
+  q <- q + lemon::facet_rep_wrap(~age, repeat.tick.labels = "y", ncol=2, scales="free_y")
+  q <- q + geom_ribbon(aes(ymin = -Inf, ymax = n_baseline_thresholdu0, fill = "1low"))
+  q <- q + geom_ribbon(aes(ymin = n_baseline_thresholdu0, ymax = n_baseline_thresholdu1, fill = "2med"))
+  q <- q + geom_ribbon(aes(ymin = n_baseline_thresholdu1, ymax = Inf, fill = "3hig"))
+  q <- q + geom_line(aes(y=n))
+  if(nrow(pd_med)>0){
+    q <- q + geom_point(data=pd_med, mapping=aes(y=n), size=3)
+    q <- q + geom_point(data=pd_med, mapping=aes(y=n, colour = "2med"), size=1)
+  }
+  if(nrow(pd_hig)>0){
+    q <- q + geom_point(data=pd_hig, mapping=aes(y=n), size=3)
+    q <- q + geom_point(data=pd_hig, mapping=aes(y=n, colour = "3hig"), size=1)
+  }
+  q <- q + expand_limits(y=0)
+  q <- q + labs(title = title)
+  q <- q + scale_y_continuous("Konsultasjoner", expand=c(0,0))
+  q <- q + scale_x_continuous(
+    "\u00C5r-uke",
+    breaks=labs$xval,
+    labels=labs$yrwk,
+    expand = expand_scale(mult = c(0, 0.02))
+    )
+  q <- q + scale_fill_manual("",
+    values = c(
+      "1low" = "#91bfdb",
+      "2med" = "#ffffbf",
+      "3hig" = "#fc8d59"
+      ),
+    labels = c(
+      "Forventet/lavere\nenn forventet",
+      "H\u00F8yere\nenn forventet",
+      "Betydelig h\u00F8yere\nenn forventet"
+    ),
+    drop = FALSE
+  )
+  q <- q + scale_color_manual("",
+    values = c(
+      "1low" = "#91bfdb",
+      "2med" = "#ffffbf",
+      "3hig" = "#fc8d59"
+      ),
+    labels = c(
+      "Forventet/lavere\nenn forventet",
+      "H\u00F8yere\nenn forventet",
+      "Betydelig h\u00F8yere\nenn forventet"
+    ),
+    drop = FALSE
+  )
+  q <- q + guides(color = FALSE)
+  q <- q + fhiplot::theme_fhi_lines(legend_position = "bottom")
+  q <- q + fhiplot::set_x_axis_vertical()
+  print(q)
+}
+```
+
+# Varselkilde (`r x_municip_name`)
+
+```{r echo=FALSE, fig.height=11.69*0.45, fig.width=8.27*0.7, message=FALSE, warning=FALSE}
+pd <- d[yrwk %in% yrwks_summary & location_code==x_municip_code]
+tiles_municip(pd)
+```
+
+```{r echo=FALSE, fig.height=11.69*0.7, fig.width=8.27*0.7, message=FALSE, warning=FALSE}
+pd <- d[yrwk %in% yrwks_lines & location_code==x_municip_code]
+lines_municip(pd)
+```
+
+# Fylkesoversikt
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.height=11.69*0.7, fig.width=8.27*0.7, message=FALSE, warning=FALSE, results="asis"}
+for(x_age in names(sykdomspulsen::config$def$age$norsyss)){
+  pd <- d[yrwk %in% yrwks_summary & age==x_age] 
+  
+  q <- ggplot(pd, aes(x = yrwkdate, y = location_name, fill = status))
+  q <- q + geom_tile(colour = "black")
+  q <- q + scale_fill_manual("",
+    values = c(
+      "Normal" = "#91bfdb", 
+      "Medium" = "#ffffbf", 
+      "High" = "#fc8d59"
+      ),
+    labels = c(
+      "Forventet/lavere\nenn forventet",
+      "H\u00F8yere\nenn forventet",
+      "Betydelig h\u00F8yere\nenn forventet"
+    ),
+    drop = FALSE
+  )
+  q <- q + labs(title = glue::glue("Aldersgruppe: {x_age}"))
+  q <- q + scale_x_discrete("\u00C5r-uke (dato)", expand=c(0,0))
+  q <- q + scale_y_discrete("", expand=c(0,0))
+  #q <- q + labs(caption = sprintf("Sist oppdatert: %s", strftime(dateData, format = "%d/%m/%Y")))
+  q <- q + fhiplot::theme_fhi_basic(legend_position = "bottom")
+  q <- q + fhiplot::set_x_axis_vertical()
+  print(q)
+  cat("\\newpage\n\n")
+}
+```
+
+\newpage
+
+# Område med høyere enn forventet konsultasjoner i nærheten
+
+```{r echo=FALSE, fig.fullwidth=TRUE, fig.height=11.69*0.7, fig.width=8.27*0.7, message=FALSE, warning=FALSE, results="asis"}
+for(i in analyses_municip){
+  pd <- d[yrwk %in% yrwks_summary & location_code==i]
+  tiles_municip(pd)
+  cat("\\newpage\n\n")
+  pd <- d[yrwk %in% yrwks_lines & location_code==i]
+  lines_municip(pd)
+  cat("\\newpage\n\n")
+}
+```

@@ -437,7 +437,8 @@ clean_post_analysis <- function(res, argset) {
   res[, granularity_time:=argset$granularity_time]
   res[, granularity_geo:=argset$granularity_geo]
   res[, location_code:=argset$location_code]
-
+  res[, season:=fhi::season(yrwk)]
+  res[, x:=fhi::x(week)]
 
   ## res[stack, on = "uuid", age := age]
   ## res[stack, on = "uuid", type := tag]

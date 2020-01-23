@@ -67,8 +67,8 @@ CleanData <- function(d,
   # end
   CONFIG <- config
   # fix population age categories
-  for (i in which(names(CONFIG$AGES) != "Totalt")) {
-    population[age %in% CONFIG$AGES[[i]], agex := names(CONFIG$AGES)[i]]
+  for (i in which(names(CONFIG$def$age$norsyss) != "Totalt")) {
+    population[age %in% CONFIG$def$age$norsyss[[i]], agex := names(CONFIG$def$age$norsyss)[i]]
   }
   population[, age := NULL]
   setnames(population, "agex", "age")
@@ -162,6 +162,7 @@ CleanData <- function(d,
   dates[, year := as.numeric(format.Date(date, "%G"))]
   dates[, month := as.numeric(format.Date(date, "%m"))]
   dates[, season := fhi::season(yrwk)]
+  dates[, x := fhi::x(week)]
   dates <- dates[year >= 2006]
 
   # delete last day of data if it is not a sunday
@@ -191,7 +192,7 @@ CleanData <- function(d,
 
   data <- data[!is.na(municip_code_current),
     lapply(.SD, sum),
-    keyby = .(municip_code_current, year, age, date, week, yrwk, month, season),
+    keyby = .(municip_code_current, year, age, date, week, yrwk, month, season, x),
     .SDcols = c(syndromeAndConsult)
   ]
 
@@ -257,7 +258,8 @@ CleanData <- function(d,
       "year",
       "week",
       "month",
-      "season"
+      "season",
+      "x"
     )
   ))
 
@@ -274,7 +276,7 @@ CleanData <- function(d,
     consult_without_influenza = sum(consult_without_influenza),
     consult_with_influenza = sum(consult_with_influenza),
     pop = sum(pop)
-  ), keyby = .(county, age, date, year, yrwk, week, month, season)]
+  ), keyby = .(county, age, date, year, yrwk, week, month, season,x)]
 
   fylke[, granularityGeo := "county"]
   fylke[, location:=county]
@@ -287,7 +289,7 @@ CleanData <- function(d,
     consult_without_influenza = sum(consult_without_influenza),
     consult_with_influenza = sum(consult_with_influenza),
     pop = sum(pop)
-  ), keyby = .(age, date, year, yrwk, week, month, season)]
+  ), keyby = .(age, date, year, yrwk, week, month, season,x)]
 
   data[, county:=NULL]
   norge[, location := "norge"]
@@ -311,7 +313,8 @@ CleanData <- function(d,
     "year",
     "week",
     "month",
-    "season"
+    "season",
+    "x"
 
   ))
 
@@ -378,7 +381,6 @@ data_norsyss <- function(data, argset, schema){
   #EmailNotificationOfNewData(files$id)
 
   d <- fread(path("input", "norsyss", files$raw))
-  print(d)
   setnames(d,"date","x_date")
   dates <- unique(d[,"x_date"])
   dates[,date:=data.table::as.IDate(x_date)]
