@@ -7,6 +7,8 @@ get_location_name <- function(location_code) {
   return(norway_locations_long()[location_code, on = "location_code", location_name])
 }
 
+#' norway_locations
+#' @export
 norway_locations <- function () 
 {
     if (config$border == 2019) {
@@ -17,8 +19,26 @@ norway_locations <- function ()
     }
 }
 
+#'get_county_code
+#' 
+#' @export
+get_county_code <- function(municip){
+
+  return(paste0("county", substr(municip, 8, 9)))
+}
+
+#'get_municips_same_county
+#' 
+#' @export
 get_municips_same_county <- function(municip){
   x_county_code <- paste0("county", substr(municip, 8, 9))
+  return(norway_locations()[county_code == x_county_code, municip_code])
+
+}
+#' get_municips_county
+#' 
+#' @export
+get_municips_county <- function(x_county_code){
   return(norway_locations()[county_code == x_county_code, municip_code])
 
 }

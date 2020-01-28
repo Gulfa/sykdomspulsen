@@ -28,34 +28,38 @@ meminfluensaUI <- function(id, label = "Counter", GLOBAL) {
 meminfluensaServer <- function(input, output, session, GLOBAL) {
   current_season <- fhi::season(GLOBAL$outbreaksyrwk[1], start_week=30)
   seasons <- pool %>%
-    tbl("spuls_mem_results") %>%
-    filter(tag == "influensa" & !is.na(low)) %>%
+    tbl("results_mem") %>%
+    filter(tag_outcome == "influensa" &
+             source == "data_norsyss" &
+             !is.na(rp100_baseline_thresholdu0)) %>%
     distinct(season) %>% arrange(desc(season)) %>%
     collect()
-
+  
   output$influensaSeason <- renderUI(selectInput(session$ns("influensaSeason"), "Sesong", as.list(seasons)$season, selected = current_season))
-
+  
   influensa_data <- reactive({
     req(input$influensaCounty)
     req(input$influensaSeason)
-
+    
     x_location <- input$influensaCounty
     x_season <- input$influensaSeason
     data <- pool %>%
-      tbl("spuls_mem_results") %>%
+      tbl("results_mem") %>%
       filter(season == x_season &
+               source == "data_norsyss" & 
                location_code == x_location &
-               tag == "influensa") %>%
+               tag_outcome == "influensa") %>%
       collect()
     setDT(data)
     data[, granularity_time:="weekly"]
-    data <- sykdomspuls::calculate_confidence_interval(data, last_weeks=10)
+    cat(file=stderr(), x_location)
+    data <- sykdomspulsen::calculate_confidence_interval(data, last_weeks=10)
     return(data)
   })
 
   output$influensa_plot <- renderPlot({
     data <- influensa_data()
-    t2 <- Getlocation_name(input$influensaCounty)
+    t2 <- sykdomspulsen::get_location_name(input$influensaCounty)
     title<- paste0("Prosent pasienter med influensa i ", t2)
     q <- fhiplot::make_influenza_threshold_chart(data, title)
     return(q)

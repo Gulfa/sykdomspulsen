@@ -39,10 +39,11 @@ barometerServer <- function(input, output, session, GLOBAL) {
     x_tag <- input$weeklyBarometerType
     x_location <- input$weeklyBarometerCounty
     x_age <- input$weeklyBarometerAge
-    retData <- pool %>% tbl("spuls_standard_results") %>%
+    retData <- pool %>% tbl("results_qp") %>%
       filter(
         date >= start_date &
-        tag == x_tag &
+          tag_outcome == x_tag &
+          source == "data_norsyss" &
         location_code== x_location &
         granularity_time =="weekly" &
         age== x_age
@@ -57,43 +58,45 @@ barometerServer <- function(input, output, session, GLOBAL) {
     req(input$weeklyBarometerType)
     req(input$weeklyBarometerAge)
 
-    x_table <- "spuls_standard_results"
+    x_table <- "results_qp"
     x_tag <- input$weeklyBarometerType
     x_age <- input$weeklyBarometerAge
     x_county <- input$weeklyBarometerCounty
 
-    if(x_county=="Norge"){
+    if(x_county=="norge"){
       retData <- pool %>% tbl(x_table) %>%
         filter(
           date >= start_date &
-          tag == x_tag &
+          tag_outcome == x_tag &
           granularity_time == "weekly" &
+          source == "data_norsyss" &
           (granularity_geo == "county" | granularity_geo == "Norge") &
           age==x_age
         ) %>%
-        select(date, location_name, status) %>%
+        select(date, location_code, n_status) %>%
         collect()
     } else {
       retData <- pool %>% tbl(x_table) %>%
         filter(
           date >= start_date &
-          tag == x_tag &
+          tag_outcome == x_tag &
           age==x_age &
+          source == "data_norsyss" &
           granularity_time == "weekly" &
-          county_code==x_county
+          location_code %in% sykdomspulsen::get_municips_county(x_county)
         ) %>%
-        select(date, location_name, status) %>%
+        select(date, location_code, n_status) %>%
         collect()
     }
     setDT(retData)
-
+    retData[, location_name:=sykdomspulsen::get_location_name(location_code)]
     return(retData)
   })
 
   output$weeklyBarometerPlotBrush <- renderCachedPlot({
     pd <- weeklyBarometerPlotBrushData()
 
-    fhiplot::make_line_brush_plot(pd,x="date",dataVal="n",L2="threshold2",L3="threshold4", GetCols=GetCols)
+    fhiplot::make_line_brush_plot(pd,x="date",dataVal="n",L2="n_baseline_thresholdu0",L3="n_baseline_thresholdu1", GetCols=GetCols)
   }, cacheKeyExpr={list(
     input$weeklyBarometerCounty,
     input$weeklyBarometerType,
@@ -108,9 +111,9 @@ barometerServer <- function(input, output, session, GLOBAL) {
       pd <- pd[pd$date>=input$weeklyBarometerBrush$xmin & pd$date<=input$weeklyBarometerBrush$xmax,]
     }
 
-    pd <- pd[,c("date","location_name","status"),with=F]
+    pd <- pd[,c("date","location_name","n_status"),with=F]
     t1 <- names(GLOBAL$weeklyTypes)[GLOBAL$weeklyTypes==input$weeklyBarometerType]
-    t2 <- Getlocation_name(input$weeklyBarometerCounty)
+    t2 <- sykdomspulsen::get_location_name(input$weeklyBarometerCounty)
     title <- paste0(t1, " i ",t2, " (",input$weeklyBarometerAge," alder)\n")
 
     MakeBarometerPlot(pd, title=title, GetCols=GetCols)
@@ -130,8 +133,8 @@ MakeBarometerPlot <- function(pd, title, GetCols){
   skeleton <- data.table(expand.grid(seq(min(pd$date)-6,max(pd$date),by=1),location_nameOrder,stringsAsFactors = FALSE))
   setnames(skeleton,c("date","location_name"))
   pd <- merge(skeleton,pd,by=c("location_name","date"),all.x=TRUE)
-  pd[pd$location_name=="1 uke",]$status <- rep(c(rep("White",7),rep("Black",7)),sum(pd$location_name=="1 uke"))[1:sum(pd$location_name=="1 uke")]
-  pd[pd$location_name==" 1 uke",]$status <- rep(c(rep("White",7),rep("Black",7)),sum(pd$location_name==" 1 uke"))[1:sum(pd$location_name==" 1 uke")]
+  pd[pd$location_name=="1 uke",]$n_status <- rep(c(rep("White",7),rep("Black",7)),sum(pd$location_name=="1 uke"))[1:sum(pd$location_name=="1 uke")]
+  pd[pd$location_name==" 1 uke",]$n_status <- rep(c(rep("White",7),rep("Black",7)),sum(pd$location_name==" 1 uke"))[1:sum(pd$location_name==" 1 uke")]
 
   pd$printWeek <- ""
   pd$printWeekYear <- ""
@@ -145,12 +148,12 @@ MakeBarometerPlot <- function(pd, title, GetCols){
 
   pd$location_name <- factor(pd$location_name,levels=location_nameOrder)
   setorder(pd,location_name,-date)
-  varNames <- "status"
-  pd$status <- zoo::na.locf(pd$status)
+  varNames <- "n_status"
+  pd$n_status <- zoo::na.locf(pd$n_status)
 
-  includeNormal <- sum(pd$status=="Normal")>0
-  includeMedium <- sum(pd$status=="Medium")>0
-  includeHigh <- sum(pd$status=="High")>0
+  includeNormal <- sum(pd$n_status=="Normal")>0
+  includeMedium <- sum(pd$n_status=="Medium")>0
+  includeHigh <- sum(pd$n_status=="High")>0
 
   colours <- NULL
   if(includeHigh) colours <- c(colours,GetCols()[1])
@@ -165,13 +168,13 @@ MakeBarometerPlot <- function(pd, title, GetCols){
   q <- q + geom_tile(aes(fill = "L1"), alpha = 0.0)
   q <- q + geom_tile(aes(fill = "L2"), alpha = 0.0)
   q <- q + geom_tile(aes(fill = "L3"), alpha = 0.0)
-  if(includeHigh) q <- q + geom_tile(aes(fill = "L1"), alpha = 0.6, data=pd[pd$status=="High",])
-  if(includeMedium) q <- q + geom_tile(aes(fill = "L2"), alpha = 0.6, data=pd[pd$status=="Medium",])
-  if(includeNormal) q <- q + geom_tile(aes(fill = "L3"), alpha = 0.6, data=pd[pd$status=="Normal",])
-  q <- q + geom_tile(fill="black", alpha = 0.6, data=pd[pd$status=="Black",])
-  q <- q + geom_tile(fill="white", alpha = 0.6, data=pd[pd$status=="White",])
+  if(includeHigh) q <- q + geom_tile(aes(fill = "L1"), alpha = 0.6, data=pd[pd$n_status=="High",])
+  if(includeMedium) q <- q + geom_tile(aes(fill = "L2"), alpha = 0.6, data=pd[pd$n_status=="Medium",])
+  if(includeNormal) q <- q + geom_tile(aes(fill = "L3"), alpha = 0.6, data=pd[pd$n_status=="Normal",])
+  q <- q + geom_tile(fill="black", alpha = 0.6, data=pd[pd$n_status=="Black",])
+  q <- q + geom_tile(fill="white", alpha = 0.6, data=pd[pd$n_status=="White",])
   q <- q + fhiplot::theme_fhi_basic(legend_position = "bottom")
-  breaksDF <- pd[pd$location_name %in% c("1 uke") & pd$status %in% c("Black","White") & pd$printWeekYear!="",]
+  breaksDF <- pd[pd$location_name %in% c("1 uke") & pd$n_status %in% c("Black","White") & pd$printWeekYear!="",]
   if(as.numeric(difftime(limits[2],limits[1],"days"))/7 < 52*0.5){
     breaksDF <- breaksDF[seq(1,nrow(breaksDF),2),]
   } else if(as.numeric(difftime(limits[2],limits[1],"days"))/7 < 52*1){

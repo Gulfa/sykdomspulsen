@@ -1,8 +1,8 @@
 set_config <- function() {
-  progressr::handlers(progressr::progress_handler(
-     format = "[:bar] :current/:total (:percent) in :elapsedfull, eta: :eta",
-     clear = FALSE
-  ))
+  ## progressr::handlers(progressr::progress_handler(
+  ##    format = "[:bar] :current/:total (:percent) in :elapsedfull, eta: :eta",
+  ##    clear = FALSE
+  ## ))
 
   set_computer_name()
   set_computer_type()

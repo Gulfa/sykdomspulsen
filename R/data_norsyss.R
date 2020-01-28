@@ -401,11 +401,12 @@ data_norsyss <- function(data, argset, schema){
     dplyr::summarise(date = max(date, na.rm=T)) %>%
     dplyr::collect() %>%
     latin1_to_utf8()
+  
   if(nrow(max_date)==0){
     max_year_in_db <- 2006
   } else {
     max_date <- min(max_date$date)
-    max_year_in_db <- fhi::isoyear_n(max_date)-1
+    max_year_in_db <- fhi::isoyear_n(max_date)-10
   }
   if(max_year_in_db<=2006) max_year_in_db <- 2006
 

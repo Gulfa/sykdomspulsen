@@ -51,33 +51,33 @@ number_weeklyServer <- function(input, output, session, GLOBAL) {
     req(input$weeklyMunicip)
     req(input$weeklyType)
     req(input$weeklyAge)
-
     if (input$weeklyMunicip %in% c("Norge", "Fylke")) {
-      x_tbl <- "spuls_standard_results"
+      x_tbl <- "results_qp"
       x_tag <- input$weeklyType
       x_location <- input$weeklyCounty
       x_age <- input$weeklyAge
     } else {
-      x_tbl <- "spuls_standard_results"
+      x_tbl <- "results_qp"
       x_tag <- input$weeklyType
       x_location <- input$weeklyMunicip
       x_age <- input$weeklyAge
     }
     retData <- pool %>% tbl(x_tbl) %>%
       filter(
-        tag == x_tag &
+        tag_outcome == x_tag &
         location_code== x_location &
         granularity_time=="weekly" &
+        source=="data_norsyss" & 
         age == x_age) %>%
-      select(date, n, threshold2, threshold4, status,yrwk,denominator) %>%
+      select(date, n, n_baseline_thresholdu0, n_baseline_thresholdu1, n_status,yrwk,n_denominator) %>%
       collect()
     setDT(retData)
     retData[, location_code:=x_location]
     retData[, granularity_time:="weekly"]
     retData[, age:=x_age]
-    retData <- sykdomspuls::calculate_confidence_interval(retData, last_weeks=8)
+    retData <- sykdomspulsen::calculate_confidence_interval(retData, last_weeks=8)
     
-    retData$top <- max(c(retData$n, retData$threshold4), na.rm = T) + 2
+    retData$top <- max(c(retData$n, retData$n_baseline_thresholdu1), na.rm = T) + 2
     retData$bottom <- 0
 
     return(retData)
@@ -85,7 +85,7 @@ number_weeklyServer <- function(input, output, session, GLOBAL) {
 
   output$weeklyNumberPlotBrush <- renderCachedPlot({
     pd <- weeklyPlotData()
-    fhiplot::make_line_brush_plot(pd,x="date",dataVal="n",L2="threshold2",L3="threshold4", GetCols=GetCols)
+    fhiplot::make_line_brush_plot(pd,x="date",dataVal="n",L2="n_baseline_thresholdu0",L3="n_baseline_thresholdu1", GetCols=GetCols)
   }, cacheKeyExpr={list(
     input$weeklyCounty,
     input$weeklyMunicip,
@@ -103,13 +103,13 @@ number_weeklyServer <- function(input, output, session, GLOBAL) {
 
     t1 <- names(GLOBAL$weeklyTypes)[GLOBAL$weeklyTypes==input$weeklyType]
     if(input$weeklyMunicip=="Fylke"){
-      t2 <- Getlocation_name(input$weeklyCounty)
+      t2 <- sykdomspulsen::get_location_name(input$weeklyCounty)
     } else {
-      t2 <- Getlocation_name(input$weeklyMunicip)
+      t2 <- sykdomspulsen::get_location_name(input$weeklyMunicip)
     }
     title <- paste0(t1, " i ",t2, " (",input$weeklyAge," alder)\n")
 
-    return(fhiplot::make_line_threshold_plot(pd,x="date",dataVal="n",L1="bottom",L2="threshold2",L3="threshold4",L4="top",title=title, pointShift = -3.5, weekNumbers=TRUE, step=F, GetCols=GetCols, legend_position = "bottom"))
+    return(fhiplot::make_line_threshold_plot(pd,x="date",dataVal="n",L1="bottom",L2="n_baseline_thresholdu0",L3="n_baseline_thresholdu1",L4="top",title=title, pointShift = -3.5, weekNumbers=TRUE, step=F, GetCols=GetCols, legend_position = "bottom"))
 
   }, cacheKeyExpr={list(
     input$weeklyCounty,

@@ -44,43 +44,53 @@ DBI::dbExecute(pool, glue::glue({"USE {db_config$db};"}))
 #   return(location_name)
 # }
 #
-# GetCols <- function(){
-#   retval <- rev(fhiplot::warning_color)
-#   names(retval) <- NULL
-#   #retval <- c('#fc8d59','#ffffbf','#91cf60')
-#   return(retval)
-# }
-#
-# GLOBAL <- new.env(parent = emptyenv())
-# val <- pool %>% dplyr::tbl("spuls_standard_results") %>%
-#   dplyr::summarize(date=max(date,na.rm=T)) %>%
-#   dplyr::collect() %>%
-#   fd::latin1_to_utf8()
-#
-# GLOBAL$dateMax <- val$date
-# GLOBAL$dateMinRestrictedRecent <- GLOBAL$dateMax - 365
-# GLOBAL$dateMinRestrictedLine <- GLOBAL$dateMax - 365 * 15
-#
-# GLOBAL$outbreaksyrwk <- GLOBAL$weeklyyrwk <- rev(fhidata::days[yrwk<=fhi::isoyearweek(GLOBAL$dateMax)]$yrwk)[1:20]
-#
-# vals <- unique(fd::norway_locations()[,c("county_code","county_name")])
-# GLOBAL$weeklyCounties <- c("Norge", vals$county_code)
-# names(GLOBAL$weeklyCounties) <- c("Norge", vals$county_name)
-#
-# CONFIG_OLD <- sykdomspuls::ConvertConfigForAPI()
-# GLOBAL$weeklyTypes <- GLOBAL$dailyTypes <- CONFIG_OLD$SYNDROMES[CONFIG_OLD$SYNDROMES %in% sykdomspuls::CONFIG$STANDARD[websiteInternal == TRUE]$tag]
-# GLOBAL$weeklyAges <- GLOBAL$dailyAges <- CONFIG_OLD$AGES
-#
-# vals <- fd::norway_locations_long()[location_code!="norway"]
-# vals[fd::norway_locations(),on="location_code==municip_code",county_code:=county_code]
-# vals[is.na(county_code),county_code:=location_code]
-# vals[location_code=="norge",location_code:="Norge"]
-# vals[location_code=="norge",county_code:="Norge"]
-#
-# GLOBAL$municipToCounty <- vals
-#
-# GLOBAL$weeklyValues <- c(
-#   "Konsultasjoner" = "consults",
-#   "1 uke eksess" = "excess1"
-# )
+GetCols <- function(){
+  retval <- rev(fhiplot::warning_color)
+  names(retval) <- NULL
+  #retval <- c('#fc8d59','#ffffbf','#91cf60')
+  return(retval)
+}
+
+GLOBAL <- new.env(parent = emptyenv())
+val <- pool %>% dplyr::tbl("results_qp") %>%
+  dplyr::summarize(date=max(date,na.rm=T)) %>%
+  dplyr::collect() %>%
+  fd::latin1_to_utf8()
+
+GLOBAL$dateMax <- val$date
+GLOBAL$dateMinRestrictedRecent <- GLOBAL$dateMax - 365
+GLOBAL$dateMinRestrictedLine <- GLOBAL$dateMax - 365 * 15
+
+GLOBAL$outbreaksyrwk <- GLOBAL$weeklyyrwk <- rev(fhidata::days[yrwk<=fhi::isoyearweek(GLOBAL$dateMax)]$yrwk)[1:20]
+
+vals <- unique(sykdomspulsen::norway_locations()[,c("county_code","county_name")])
+GLOBAL$weeklyCounties <- c("norge", vals$county_code)
+names(GLOBAL$weeklyCounties) <- c("Norge", vals$county_name)
+
+
+GLOBAL$weeklyAges <- names(sykdomspulsen::config$def$age$norsyss)
+GLOBAL$dailyAges <- names(sykdomspulsen::config$def$age$norsyss)
+
+
+syndromes_to_include <- c("gastro")
+long_names <- sykdomspulsen::config$def$long_names[syndromes_to_include]
+select_syndromes <- list()
+for(n in names(long_names)){
+  select_syndromes[long_names[[n]]] <- n
+}
+GLOBAL$weeklyTypes <- GLOBAL$dailyTypes <- select_syndromes
+GLOBAL$syndrome_order <- syndromes_to_include
+
+vals <- sykdomspulsen::norway_locations_long()[location_code!="norway"]
+vals[sykdomspulsen::norway_locations(),on="location_code==municip_code",county_code:=county_code]
+vals[is.na(county_code),county_code:=location_code]
+vals[location_code=="norge",location_code:="Norge"]
+vals[location_code=="norge",county_code:="Norge"]
+
+GLOBAL$municipToCounty <- vals
+
+GLOBAL$weeklyValues <- c(
+  "Konsultasjoner" = "consults",
+  "1 uke eksess" = "excess1"
+)
 

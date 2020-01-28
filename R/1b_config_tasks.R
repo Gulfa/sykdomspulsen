@@ -30,6 +30,16 @@ set_tasks <- function() {
   config$tasks$add_task(
     task_from_config(
       list(
+        name = "data_weather",
+        type = "data",
+        action = "data_weather",
+        schema = list(output = config$schema$data_weather)
+      )
+    )
+  )
+  config$tasks$add_task(
+    task_from_config(
+      list(
         name = "data_msis",
         type = "data",
         action = "data_msis",
@@ -98,8 +108,7 @@ set_tasks <- function() {
         filter = "tag_outcome=='gastro'",
         for_each = list("location_code" = "all", "age" = "all", "sex" = "Totalt"),
         schema = list(
-          output = config$schema$results_qp,
-          output_limits = config$schema$results_mem_limits
+          output = config$schema$results_qp
         ),
         args = list(
           tag = "gastro",
@@ -112,7 +121,32 @@ set_tasks <- function() {
       )
     )
   )
-
+  config$tasks$add_task(
+    task_from_config(
+      conf = list(
+        name = "analysis_norsyss_qp_gastro_daily",
+        db_table = "data_norsyss",
+        type = "analysis",
+        dependencies = c("data_norsyss"),
+        cores = min(6, parallel::detectCores()),
+        chunk_size= 100,
+        action = "analysis_qp",
+        filter = "tag_outcome=='gastro' & (granularity_geo=='county' | granularity_geo=='national')",
+        for_each = list("location_code" = "all", "age" = "all", "sex" = "Totalt"),
+        schema = list(
+          output = config$schema$results_qp
+        ),
+        args = list(
+          tag = "gastro",
+          train_length = 5,
+          years = c(2018, 2019, 2020),
+          weeklyDenominatorFunction = sum,
+          denominator = "consult_without_influenza",
+          granularity_time = "daily"
+        )
+      )
+    )
+  )
   config$tasks$add_task(
     task_from_config(
       list(
@@ -121,7 +155,7 @@ set_tasks <- function() {
         type = "analysis",
         dependencies = c("data_norsyss"),
         action = "analysis_mem",
-        filter = "(granularity_geo=='county' | granularity_geo=='norge') & tag_outcome=='influensa'",
+        filter = "(granularity_geo=='county' | granularity_geo=='national') & tag_outcome=='influensa'",
         for_each = list("location_code" = "all"),
         schema = list(
           output = config$schema$results_mem,

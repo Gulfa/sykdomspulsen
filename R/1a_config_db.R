@@ -27,6 +27,34 @@ set_db <- function(){
         "uuid"
       )
     ),
+
+    data_weather = schema$new(
+      db_config = config$db_config,
+      db_table = "data_weather",
+      db_field_types =  c(
+        "granularity_time" = "TEXT",
+        "granularity_geo" = "TEXT",
+        "location_code" = "TEXT",
+        "season" = "TEXT",
+        "year" = "INTEGER",
+        "week" = "INTEGER",
+        "yrwk" = "TEXT",
+        "x" = "DOUBLE",
+        "date" = "DATE",
+        "tg" = "DOUBLE",
+        "tx" = "DOUBLE",
+        "tn" = "DOUBLE",
+        "rr" = "DOUBLE",
+        "forecast" = "BOOLEAN",
+        "border" = "INTEGER"
+      ),
+      db_load_folder = "/xtmp/",
+      keys =  c(
+        "location_code",
+        "date"
+      )
+    ),
+      
     results_normomo_standard = schema$new(
       db_config = config$db_config,
       db_table = "results_normomo_standard",
@@ -41,7 +69,7 @@ set_db <- function(){
         "year" = "INTEGER",
         "week" = "INTEGER",
         "yrwk" = "TEXT",
-        "x" = "INTEGER",
+        "x" = "DOUBLE",
         "date" = "DATE",
 
         "n_obs" = "INTEGER",
@@ -118,7 +146,7 @@ set_db <- function(){
         "week" = "INTEGER",
         "month" = "INTEGER",
         "season" = "TEXT",
-        "x" = "INTEGER",
+        "x" = "DOUBLE",
         "n" = "INTEGER",
         "pop" = "INTEGER",
         "consult_with_influenza" = "INTEGER",
@@ -165,7 +193,7 @@ set_db <- function(){
       )
     ),
     results_mem = schema$new(
-      db_table = "mem_results",
+      db_table = "results_mem",
       db_config = config$db_config,
       db_field_types =  c(
         "tag_outcome" = "TEXT",
@@ -181,13 +209,14 @@ set_db <- function(){
         "yrwk" = "TEXT",
         "year" = "INTEGER",
         "week" = "INTEGER",
-        "n" = "TEXT",
-        "rate" = "DOUBLE",
-        "rate_threshold_0" = "DOUBLE",
-        "rate_threshold_1" = "DOUBLE",
-        "rate_threshold_2" = "DOUBLE",
-        "rate_threshold_3" = "DOUBLE",
-        "rate_status"= "TEXT"
+        "n" = "INTEGER",
+        "n_denominator" = "INTEGER",
+        "rp100" = "DOUBLE",
+        "rp100_baseline_thresholdu0" = "DOUBLE",
+        "rp100_baseline_thresholdu1" = "DOUBLE",
+        "rp100_baseline_thresholdu2" = "DOUBLE",
+        "rp100_baseline_thresholdu3" = "DOUBLE",
+        "rp100_status"= "TEXT"
       ),
       db_load_folder = "/xtmp/",
       keys =  c(
@@ -212,7 +241,7 @@ set_db <- function(){
         "year" = "DOUBLE",
         "week" = "DOUBLE",
         "season" = "TEXT",
-        "x" = "INTEGER",
+        "x" = "DOUBLE",
         "date" = "DATE",
         "n" = "INTEGER",
         "n_denominator" = "INTEGER",
@@ -238,17 +267,17 @@ set_db <- function(){
       )
     ),
     results_mem_limits = schema$new(
-      db_table = "mem_limits_results",
+      db_table = "results_mem_limits",
       db_config = config$db_config,
       db_field_types = list(
         "season" = "TEXT",
         "tag_outcome" = "TEXT",
         "age" = "TEXT",
         "location_code" = "TEXT",
-        "rate_threshold_0" = "DOUBLE",
-        "rate_threshold_1" = "DOUBLE",
-        "rate_threshold_2" = "DOUBLE",
-        "rate_threshold_3" = "DOUBLE"
+        "rp100_baseline_thresholdu0" = "DOUBLE",
+        "rp100_baseline_thresholdu1" = "DOUBLE",
+        "rp100_baseline_thresholdu2" = "DOUBLE",
+        "rp100_baseline_thresholdu3" = "DOUBLE"
       ),
       db_load_folder = "/xtmp/",
       keys = c("season", "tag_outcome", "age", "location_code")

@@ -4,8 +4,8 @@
 \alias{IdentifyDatasets}
 \title{Identify the latest raw/clean datasets}
 \usage{
-IdentifyDatasets(raw = list.files(fd::path("data_raw", package =
-  "sykdomspuls"), "^partially_formatted_"))
+IdentifyDatasets(raw = list.files(path("input", "norsyss"),
+  "^partially_formatted_"))
 }
 \arguments{
 \item{raw}{Folder containing raw data}
