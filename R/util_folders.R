@@ -21,7 +21,7 @@ path <- function(type="output", tag, ...) {
 #' @param date the date of extraction
 #' @export
 create_latest_folder <- function(results_folder_name, date) {
-  from_folder <- results_folder(results_folder_name, date)
-  to_folder <- fd::path("results", results_folder_name, "latest")
+  from_folder <- path("output", results_folder_name, date)
+  to_folder <- path("output", results_folder_name, "latest")
   processx::run("cp", c("-rT", from_folder, to_folder))
 }

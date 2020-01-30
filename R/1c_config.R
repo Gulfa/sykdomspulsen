@@ -1,8 +1,8 @@
 set_config <- function() {
-  progressr::handlers(progressr::progress_handler(
-     format = "[:bar] :current/:total (:percent) in :elapsedfull, eta: :eta",
-     clear = FALSE
-  ))
+  ## progressr::handlers(progressr::progress_handler(
+  ##    format = "[:bar] :current/:total (:percent) in :elapsedfull, eta: :eta",
+  ##    clear = FALSE
+  ## ))
 
   set_computer_name()
   set_computer_type()
@@ -11,20 +11,30 @@ set_config <- function() {
   set_db()
   set_tasks()
 
-  config$smallMunicips <- c(
-    "municip1151",
-    "municip1835",
-    "municip1252",
-    "municip1739"
-  )
-  config$AGES <- list(
-    "Totalt" = c(0:105),
-    "0-4" = c(0:4),
-    "5-14" = c(5:14),
-    "15-19" = c(15:19),
-    "20-29" = c(20:29),
-    "30-64" = c(30:64),
-    "65+" = c(65:105)
+  config$def <- list(
+    smallMunicips = c(
+      "municip1151",
+      "municip1835",
+      "municip1252",
+      "municip1739"
+    ),
+    age = list(
+      norsyss=list(
+        "Totalt" = c(0:105),
+        "0-4" = c(0:4),
+        "5-14" = c(5:14),
+        "15-19" = c(15:19),
+        "20-29" = c(20:29),
+        "30-64" = c(30:64),
+        "65+" = c(65:105)
+      )
+    ),
+    long_names = list(
+      gastro="Mage-tarminfeksjoner"
+    ),
+    short_names = list(
+      gastro="Mage-tarm"
+    )
   )
 
   # if(!foreach::getDoParRegistered()){

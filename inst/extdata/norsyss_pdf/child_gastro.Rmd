@@ -1,0 +1,36 @@
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+x_tag <- "{{x_tag}}"
+location_code <- "{{location_code}}"
+location_name <- fd::norway_locations()[county_code==location_code]$county_name[1]
+table <- sykdomspulsen::tbl("results_qp")
+
+```
+
+# Mage-tarminfeksjoner, `r location_name` {-}
+\begingroup\small
+Denne rapporten baseres på Sykdomspulsen som er et overvåkningssystem som innhenter anonyme diagnosedata fra primærlegene og legevakten.  
+
+Mage-tarminfeksjoner er en samlebetegnelse for diagnosekodene (ICPC-2) D11-Diare, D70-Tarmin
+feksjon og D73-Gastroenteritt antatt infeksiøs.  
+
+En økning av mage-tarm konsultasjoner sees ofte på vinterstid. Denne økningen kan opptre i alle aldersgrupper og er ofte relatert til vanlig omgangssyke som er svært smittsomt. Det har vært en nedgang i antallet konsultasjoner med mage-tarm diagnoser blant 0-4 åringer fra sesongen 2016/2017. Det har antakelig en sammenheng med rotavirus vaksinasjonen som ble innført i denne aldersgruppen i 2014. I aldersgruppen 5-19 år ser vi en stor økning av mage-tarminfeksjoner fra sesongen 2016/2017. Dette skyldes hovedsakelig de nye fraværsreglene som ble innført i den videregående skole fra høsten 2016.  
+
+Vil du vite mer om Sykdomspulsen kan du gå tilbake til hovedsiden til Sykdomspulsen og klikke på «Om Sykdomspulsen».
+\endgroup
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE, results='asis',  fig.height = 3.8, fig.width = 6.8, fig.align = 'center', fig.pos="H"}
+sykdomspulspdf_plot_total(table, location_code, x_tag=x_tag)
+``` 
+\begingroup\footnotesize
+Fig. 1: Antall konsultasjoner vedrørende mage-tarminfeksjoner per uke i `r location_name` for de siste 5 sesongene. Ulike sesonger er angitt med forskjellig farge, årets sesong er markert med svart linje. Antallet konsultasjoner er lavere i ferier og på helligdager. Dette er spesielt tydelig rundt jul/nyttår og påske (markert med svarte stiplede vertikale linjer), men også i sommerferieukene og høstferien.
+\endgroup
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE, results='asis', fig.height = 4.2, fig.width = 6.8, fig.align = 'center'}
+sykdomspulspdf_plot_ages(table, location_code, x_tag=x_tag)
+``` 
+\begingroup\footnotesize
+
+Fig. 2: Antall konsultasjoner vedrørende mage-tarminfeksjoner per uke i `r location_name`  for de siste 5 sesongene for forskjellige aldersgrupper. Ulike sesonger er angitt med forskjellig farge (se fig. 1 for informasjon om hvilken farge som tilhører hvilken sesong), årets sesong er markert med svart linje. Antallet konsultasjoner er lavere i ferier og på helligdager. Dette er spesielt tydelig rundt jul/nyttår og påske (markert med svarte stiplede vertikale linjer), men også i sommerferieukene og høstferien. Vær oppmerksom på at den vertikale skalaen (y-aksen) er forskjellig fra graf til graf.
+\endgroup
+
+\newpage

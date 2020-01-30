@@ -35,20 +35,22 @@ signalsServer <- function(input, output, session, GLOBAL) {
   output$table1 <- renderTable({
     x_wkyr <- input$weeklyOutbreakWeek
 
-    data_county <- pool %>% tbl("spuls_standard_results") %>%
-      filter(tag != "influensa" &
+    data_county <- pool %>% tbl("results_qp") %>%
+      filter(tag_outcome != "influensa" &
                granularity_time == "weekly" &
+               source == "data_norsyss" &
                granularity_geo == "county" &
                yrwk==x_wkyr) %>% collect()
-    data_municipality <- pool %>% tbl("spuls_standard_results") %>%
-      filter(tag != "influensa" &
+    data_municipality <- pool %>% tbl("results_qp") %>%
+      filter(tag_outcome != "influensa" &
                granularity_time == "weekly" &
+               source == "data_norsyss" &
                granularity_geo == "municip" &
                yrwk==x_wkyr) %>% collect()
     setDT(data_county)
     setDT(data_municipality)
     data <- GenerateOutbreakListInternal(df=data_county,
-                                         dk=data_municipality, saveFiles=NULL)
+                                         dk=data_municipality)
     data <- data[["df"]]
 
     if(input$weeklyOutbreakHideEmpty){
@@ -65,7 +67,7 @@ signalsServer <- function(input, output, session, GLOBAL) {
     data$sumCum <- formatC(data$sumCum,digits=0,format="f")
     data$sumCum[data$sumCum=="0"] <- ""
     setnames(data,c("Sykdom","Alder","Fylke (Z verdi)","Gj. Z Verdi","Eksess tilfeller"))
-    data$Sykdom <- factor(data$Sykdom,levels=sykdomspuls::CONFIG$STANDARD$tag)
+    data$Sykdom <- factor(data$Sykdom,levels=GLOBAL$syndrome_order)
     levels(data$Sykdom) <- sykdomspuls::CONFIG$STANDARD$namesLong
     data
   },
@@ -77,20 +79,22 @@ signalsServer <- function(input, output, session, GLOBAL) {
   output$table2 <- renderTable({
     x_wkyr <- input$weeklyOutbreakWeek
 
-    data_county <- pool %>% tbl("spuls_standard_results") %>%
-      filter(tag != "influensa" &
+    data_county <- pool %>% tbl("results_qp") %>%
+      filter(tag_outcome != "influensa" &
                granularity_time == "weekly" &
+               source == "data_norsyss" &
                granularity_geo == "county" &
                yrwk==x_wkyr) %>% collect()
-    data_municipality <- pool %>% tbl("spuls_standard_results") %>%
-      filter(tag != "influensa" &
+    data_municipality <- pool %>% tbl("results_qp") %>%
+      filter(tag_outcome != "influensa" &
                granularity_time == "weekly" &
+               source == "data_norsyss" &
                granularity_geo == "municip" &
                yrwk==x_wkyr) %>% collect()
     setDT(data_county)
     setDT(data_municipality)
     data <- GenerateOutbreakListInternal(df=data_county,
-                                         dk=data_municipality, saveFiles=NULL)
+                                         dk=data_municipality)
     data <- data[["dk"]]
     if(input$weeklyOutbreakHideEmpty){
       data <- data[data$High!="",]
@@ -107,7 +111,7 @@ signalsServer <- function(input, output, session, GLOBAL) {
     data$sumCum <- formatC(data$sumCum,digits=0,format="f")
     data$sumCum[data$sumCum=="0"] <- ""
     setnames(data,c("Sykdom","Alder","Fylke","Kommune (Z verdi)","Gj. Z Verdi","Eksess tilfeller"))
-    data$Sykdom <- factor(data$Sykdom,levels=sykdomspuls::CONFIG$STANDARD$tag)
+    data$Sykdom <- factor(data$Sykdom,levels=GLOBAL$syndrome_order)
     levels(data$Sykdom) <- sykdomspuls::CONFIG$STANDARD$namesLong
     data
   },
@@ -117,12 +121,7 @@ signalsServer <- function(input, output, session, GLOBAL) {
   width='100%')
 }
 
-GenerateOutbreakListInternal <- function(df = readRDS(fd::path("results", sprintf("%s/resYearLine.RDS", LatestRawID()))),
-                                         dk = readRDS(fd::path("results", sprintf("%s/resYearLineMunicip.RDS", LatestRawID()))),
-                                         saveFiles = c(
-                                           fd::path("results", sprintf("%s/outbreaks.RDS", LatestRawID()))
-                                         ),
-                                         useType = FALSE) {
+GenerateOutbreakListInternal <- function(df,dk,useType = FALSE) {
   # variables used in data.table functions in this function
   . <- NULL
   status <- NULL
@@ -131,8 +130,8 @@ GenerateOutbreakListInternal <- function(df = readRDS(fd::path("results", sprint
   county <- NULL
   location <- NULL
   locationName <- NULL
-  zscore <- NULL
-  tag <- NULL
+  n_zscore <- NULL
+  tag_outcome <- NULL
   cumE1 <- NULL
   meanZScore <- NULL
   sumCum <- NULL
@@ -140,24 +139,29 @@ GenerateOutbreakListInternal <- function(df = readRDS(fd::path("results", sprint
   countyName <- NULL
   # end
 
+  df[, location_name:=sykdomspulsen::get_location_name(location_code)]
+  dk[, location_name:=sykdomspulsen::get_location_name(location_code)]
   counties <- unique(df[, c("location_code", "location_name"), with = F])
-  setnames(counties, c("county_code", "county_name"))
 
-  df <- df[, c("yrwk", "age", "tag", "location_name", "status", "zscore", "cumE1"), with = F]
-  dk <- dk[, c("yrwk", "age", "tag", "location_code", "location_name", "status", "county_code", "zscore", "cumE1"), with = F]
-  dk <- merge(dk, counties, by = "county_code")
+  df <- df[, c("yrwk", "age", "tag_outcome", "location_name",
+               "n_status", "n_zscore", "n", "n_baseline_expected"), with = F]
+  dk <- dk[, c("yrwk", "age", "tag_outcome", "location_code", "location_name",
+               "n_status", "n_zscore","n", "n_baseline_expected"), with = F]
+  dk[, county_code:=sykdomspulsen::get_county_code(location_code)]
+  dk[, county_name:=sykdomspulsen::get_location_name(county_code)]
+  
 
-  setorder(df, status, -yrwk, -age)
-  setorder(dk, status, -yrwk, -age, county_code, location_code)
+  setorder(df, n_status, -yrwk, -age)
+  setorder(dk, n_status, -yrwk, -age, county_code, location_code)
 
-  df[, location_name := sprintf("%s (%s)", location_name, formatC(zscore, digits = 2, format = "f"))]
-  dk[, location_name := sprintf("%s (%s)", location_name, formatC(zscore, digits = 2, format = "f"))]
+  df[, location_name := sprintf("%s (%s)", location_name, formatC(n_zscore, digits = 2, format = "f"))]
+  dk[, location_name := sprintf("%s (%s)", location_name, formatC(n_zscore, digits = 2, format = "f"))]
 
-  df[status != "High", location_name := ""]
-  dk[status != "High", location_name := ""]
+  df[n_status != "High", location_name := ""]
+  dk[n_status != "High", location_name := ""]
 
-  df[, status := NULL]
-  dk[, status := NULL]
+  df[, n_status := NULL]
+  dk[, n_status := NULL]
 
   dk[, location_code := NULL]
 
@@ -168,28 +172,26 @@ GenerateOutbreakListInternal <- function(df = readRDS(fd::path("results", sprint
   ), by = .(
     yrwk,
     age,
-    tag
+    tag_outcome
   )]
-  df1[, zscore := NULL]
-  df1[, cumE1 := NULL]
-
+  df1[, n_zscore := NULL]
   df2 <- df[location_name != "", .(
-    meanZScore = mean(zscore),
-    sumCum = sum(cumE1)
+    meanZScore = mean(n_zscore),
+    sumCum = sum(n - n_baseline_expected)
   ), by = .(
     yrwk,
     age,
-    tag
+    tag_outcome
   )]
   df3 <- df[stringr::str_detect(location_name, "Norge"), .(
-    sumCumNorge = sum(cumE1)
+    sumCumNorge = sum(n - n_baseline_expected)
   ), by = .(
     yrwk,
     age,
-    tag
+    tag_outcome
   )]
-  df <- merge(df1, df2, by = c("yrwk", "age", "tag"), all.x = T)
-  df <- merge(df, df3, by = c("yrwk", "age", "tag"), all.x = T)
+  df <- merge(df1, df2, by = c("yrwk", "age", "tag_outcome"), all.x = T)
+  df <- merge(df, df3, by = c("yrwk", "age", "tag_outcome"), all.x = T)
   df[is.na(meanZScore), meanZScore := 0]
   df[is.na(sumCum), sumCum := 0]
   df[is.na(sumCumNorge), sumCumNorge := 0]
@@ -206,23 +208,22 @@ GenerateOutbreakListInternal <- function(df = readRDS(fd::path("results", sprint
   ), by = .(
     yrwk,
     age,
-    tag,
+    tag_outcome,
     county_code,
     county_name
   )]
-  dk1[, zscore := NULL]
-  dk1[, cumE1 := NULL]
+  dk1[, n_zscore := NULL]
 
   dk2 <- dk[location_name != "", .(
-    meanZScore = mean(zscore),
+    meanZScore = mean(n_zscore),
     sumCum = sum(cumE1)
   ), by = .(
     yrwk,
     age,
-    tag,
+    tag_outcome,
     county_code
   )]
-  dk <- merge(dk1, dk2, by = c("yrwk", "age", "tag", "county_code"), all.x = T)
+  dk <- merge(dk1, dk2, by = c("yrwk", "age", "tag_outcome", "county_code"), all.x = T)
   dk[is.na(meanZScore), meanZScore := 0]
   dk[is.na(sumCum), sumCum := 0]
   dk[, meanZScore := formatC(meanZScore, digits = 2, format = "f")]
@@ -233,32 +234,33 @@ GenerateOutbreakListInternal <- function(df = readRDS(fd::path("results", sprint
   df[, location_name := gsub(", , ", "", location_name)]
   df[, location_name := gsub(", $", "", location_name)]
   df[, location_name := gsub("^, ", "", location_name)]
-  setorder(df, tag, -yrwk, -age)
+  df[, n:= NULL]
+  df[, n_baseline_expected:= NULL]
+
+  setorder(df, tag_outcome, -yrwk, -age)
   setnames(df, "location_name", "High")
 
   df[, age := factor(age, levels = c("Totalt", "0-4", "5-14", "15-19", "20-29", "30-64", "65+"))]
-  setorder(df, tag, -yrwk, age)
-  setcolorder(df, c("tag", "yrwk", "age", "High", "meanZScore", "sumCum"))
+  setorder(df, tag_outcome, -yrwk, age)
+  setcolorder(df, c("tag_outcome", "yrwk", "age", "High", "meanZScore", "sumCum"))
 
   dk[, location_name := gsub(", , ", "", location_name)]
   dk[, location_name := gsub(", $", "", location_name)]
   dk[, location_name := gsub("^, ", "", location_name)]
   dk[, age := factor(age, levels = c("Totalt", "0-4", "5-14", "15-19", "20-29", "30-64", "65+"))]
-  setorder(dk, tag, -yrwk, age, county_code)
-  dk[, county_code := NULL]
-  setcolorder(dk, c("tag", "yrwk", "age", "county_name", "location_name", "meanZScore", "sumCum"))
+  dk[, n:= NULL]
+  dk[, n_baseline_expected:= NULL]
+  dk[, county_code:= NULL]
+  setorder(dk, tag_outcome, -yrwk, age)
+  setcolorder(dk, c("tag_outcome", "yrwk", "age", "county_name", "location_name", "meanZScore", "sumCum"))
   setnames(dk, "location_name", "High")
 
   if (useType) {
-    setnames(df, "tag", "type")
-    setnames(dk, "tag", "type")
+    setnames(df, "tag_outcome", "type")
+    setnames(dk, "tag_outcome", "type")
   }
 
   outbreaks <- list(df = df, dk = dk)
-  if (!is.null(saveFiles)) {
-    SaveRDS(outbreaks, saveFiles)
-  }
-
   return(outbreaks)
 }
 

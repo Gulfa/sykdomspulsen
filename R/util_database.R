@@ -57,7 +57,8 @@ write_data_infile <- function(
     na = na,
     col.names=colnames,
     eol=eol,
-    quote = quote
+    quote = quote,
+    scipen=12
   )
 }
 
@@ -184,7 +185,8 @@ load_data_infile.default <- function(conn = NULL, db_config = NULL, table, dt = 
   processx::run(
     "bcp",
     args,
-    echo_cmd = F
+    echo_cmd = F,
+    echo = F
   )
 
   b <- Sys.time()

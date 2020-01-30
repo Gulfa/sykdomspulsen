@@ -6,6 +6,20 @@ set_tasks <- function() {
   config$tasks$add_task(
     task_from_config(
       list(
+        name = "data_pre_norsyss",
+        type = "data",
+        action = "data_pre_norsyss",
+        schema = list(),
+        args = list(
+          date_from = "2019-01-01"
+        )
+      )
+    )
+  )
+  
+  config$tasks$add_task(
+    task_from_config(
+      list(
         name = "data_normomo",
         type = "data",
         action = "data_normomo",
@@ -13,7 +27,16 @@ set_tasks <- function() {
       )
     )
   )
-
+  config$tasks$add_task(
+    task_from_config(
+      list(
+        name = "data_weather",
+        type = "data",
+        action = "data_weather",
+        schema = list(output = config$schema$data_weather)
+      )
+    )
+  )
   config$tasks$add_task(
     task_from_config(
       list(
@@ -85,13 +108,12 @@ set_tasks <- function() {
         filter = "tag_outcome=='gastro'",
         for_each = list("location_code" = "all", "age" = "all", "sex" = "Totalt"),
         schema = list(
-          output = config$schema$results_qp,
-          output_limits = config$schema$results_mem_limits
+          output = config$schema$results_qp
         ),
         args = list(
           tag = "gastro",
           train_length = 5,
-          years = c(2018, 2019),
+          years = c(2018, 2019, 2020),
           weeklyDenominatorFunction = sum,
           denominator = "consult_without_influenza",
           granularity_time = "weekly"
@@ -99,7 +121,32 @@ set_tasks <- function() {
       )
     )
   )
-
+  config$tasks$add_task(
+    task_from_config(
+      conf = list(
+        name = "analysis_norsyss_qp_gastro_daily",
+        db_table = "data_norsyss",
+        type = "analysis",
+        dependencies = c("data_norsyss"),
+        cores = min(6, parallel::detectCores()),
+        chunk_size= 100,
+        action = "analysis_qp",
+        filter = "tag_outcome=='gastro' & (granularity_geo=='county' | granularity_geo=='national')",
+        for_each = list("location_code" = "all", "age" = "all", "sex" = "Totalt"),
+        schema = list(
+          output = config$schema$results_qp
+        ),
+        args = list(
+          tag = "gastro",
+          train_length = 5,
+          years = c(2018, 2019, 2020),
+          weeklyDenominatorFunction = sum,
+          denominator = "consult_without_influenza",
+          granularity_time = "daily"
+        )
+      )
+    )
+  )
   config$tasks$add_task(
     task_from_config(
       list(
@@ -108,7 +155,7 @@ set_tasks <- function() {
         type = "analysis",
         dependencies = c("data_norsyss"),
         action = "analysis_mem",
-        filter = "(granularity_geo=='county' | granularity_geo=='norge') & tag_outcome=='influensa'",
+        filter = "(granularity_geo=='county' | granularity_geo=='national') & tag_outcome=='influensa'",
         for_each = list("location_code" = "all"),
         schema = list(
           output = config$schema$results_mem,
@@ -226,7 +273,7 @@ set_tasks <- function() {
         dependencies = c("simple_analysis_msis"),
         args = list(
           tag = "influensa",
-          icpc2 = "R60",
+          icpc2 = "R80",
           contactType = "Legekontakt",
           folder_name = "mem_influensa",
           outputs = c("charts", "county_sheet", "region_sheet", "norway_sheet")
@@ -245,9 +292,39 @@ set_tasks <- function() {
         action="ui_external_api",
         args = list(
           tags = c("gastro"),
-          short = c("Mage-tarm"),
-          long = c("Mage-tarminfeksjoner"),
+          short = unlist(config$def$short_names[c("gastro")]),
+          long =  unlist(config$def$long_names[c("gastro")]),
           age = config$def$age$norsyss
+        )
+      )
+    )
+  )
+  config$tasks$add_task(
+    task_from_config(
+      list(
+        name = "ui_alert_pdf",
+        type = "data",
+        schema=list(input=config$schema$results_qp),
+        action="ui_alert_pdf",
+        args = list(
+          tags = c("gastro"),
+          name_short = config[["def"]]$short_names,
+          name_long = config[["def"]]$long_names
+        )
+      )
+    )
+  )
+  config$tasks$add_task(
+    task_from_config(
+      list(
+        name = "ui_norsyss_pdf",
+        type = "data",
+        schema=list(input=config$schema$results_qp),
+        action="ui_norsyss_pdf",
+        args = list(
+          tags = c("gastro"),
+          name_short = config[["def"]]$short_names,
+          name_long = config[["def"]]$long_names
         )
       )
     )

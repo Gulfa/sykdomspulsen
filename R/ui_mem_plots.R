@@ -25,17 +25,17 @@ ui_mem_plots <- function(data, argset, schema){
 #' @param date extract date
 #'
 create_norway_sheet <- function(conf, date) {
-  current_season <- tbl("spuls_mem_results") %>%
+  current_season <- tbl("mem_results") %>%
     dplyr::summarize(season = max(season, na.rm = T)) %>%
     dplyr::collect()
   current_season <- current_season$season
 
   x_tag <- conf$tag
-  data <- tbl("spuls_mem_results") %>%
+  data <- tbl("mem_results") %>%
     dplyr::filter(season == current_season & tag == x_tag) %>%
     dplyr::collect()
   setDT(data)
-  ili_out <- tbl("spuls_mem_results") %>%
+  ili_out <- tbl("mem_results") %>%
     dplyr::filter(location_code == "norge", tag == x_tag) %>%
     dplyr::select(year,
       year_week = yrwk, week, season, percent_ili = rate,
@@ -52,13 +52,13 @@ create_norway_sheet <- function(conf, date) {
 #' @param date extract date
 #'
 create_county_sheet <- function(conf, date) {
-  current_season <- tbl("spuls_mem_results") %>%
+  current_season <- tbl("mem_results") %>%
     dplyr::summarize(season = max(season, na.rm = T)) %>%
     dplyr::collect()
   current_season <- current_season$season
 
   x_tag <- conf$tag
-  data <- tbl("spuls_mem_results") %>%
+  data <- tbl("mem_results") %>%
     dplyr::filter(season == current_season & tag == x_tag) %>%
     dplyr::collect()
   setDT(data)
@@ -119,13 +119,13 @@ create_county_sheet <- function(conf, date) {
 #' @param date extract date
 #'
 create_region_sheet <- function(conf, date) {
-  current_season <- tbl("spuls_mem_results") %>%
+  current_season <- tbl("mem_results") %>%
     dplyr::summarize(season = max(season, na.rm = T)) %>%
     dplyr::collect()
   current_season <- current_season$season
 
   x_tag <- conf$tag
-  data <- tbl("spuls_mem_results") %>%
+  data <- tbl("mem_results") %>%
     dplyr::filter(season == current_season & tag == x_tag) %>%
     dplyr::collect()
   setDT(data)
@@ -207,12 +207,12 @@ create_region_sheet <- function(conf, date) {
 #' @param date extract date
 #'
 create_n_doctors_sheet <- function(conf, date) {
-  current_season <- tbl("spuls_mem_results") %>%
+  current_season <- tbl("mem_results") %>%
     dplyr::summarize(season = max(season, na.rm = T)) %>%
     dplyr::collect()
   current_season <- current_season$season
   x_tag <- conf$tag
-  data <- tbl("spuls_mem_results") %>%
+  data <- tbl("mem_results") %>%
     dplyr::filter(season == current_season & tag == x_tag & location_code == "norge") %>%
     dplyr::collect()
   setDT(data)
@@ -282,13 +282,13 @@ create_n_doctors_sheet <- function(conf, date) {
 #' @param date extract date
 #'
 create_plots <- function(conf, date) {
-  current_season <- tbl("spuls_mem_results") %>%
+  current_season <- tbl("mem_results") %>%
     dplyr::summarize(season = max(season, na.rm = T)) %>%
     dplyr::collect()
   current_season <- current_season$season
 
   x_tag <- conf$tag
-  data <- tbl("spuls_mem_results") %>%
+  data <- tbl("mem_results") %>%
     dplyr::filter(season == current_season & tag == x_tag) %>%
     dplyr::collect()
   setDT(data)

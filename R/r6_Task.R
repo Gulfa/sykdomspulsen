@@ -98,7 +98,6 @@ task_from_config <- function(conf) {
         if (extra_filter != "") {
           filter <- paste(filter, extra_filter, sep = " & ")
         }
-
         current_plan$add_data(name = "data", fn = data_function_factory(table_name, filter))
 
         if ("args" %in% names(conf)) {
@@ -112,6 +111,7 @@ task_from_config <- function(conf) {
   }
   return(task)
 }
+
 #' Task
 #'
 #' @import R6
