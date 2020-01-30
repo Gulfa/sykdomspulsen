@@ -34,13 +34,13 @@ run_mem <- function(input_data, conf, mem_schema, mem_limits_schema, source) {
     mem_df <- prepare_data_frame(data, mult_factor = conf$multiplicative_factor)
     mem_results <- run_mem_model(mem_df, conf)
     mem_results_db <- mem_results
-    mem_results_db[, location_code := "norge"]
     mem_results_db[, age := age_group]
+    mem_results_db[, location_code:=conf$location_code ]
     mem_results_db[, tag_outcome := conf$tag]
-    mem_results_db[, rate_threshold_0:=low]
-    mem_results_db[, rate_threshold_1:=medium]
-    mem_results_db[, rate_threshold_2:=high]
-    mem_results_db[, rate_threshold_3:=very_high]
+    mem_results_db[, rp100_baseline_thresholdu0:=low]
+    mem_results_db[, rp100_baseline_thresholdu1:=medium]
+    mem_results_db[, rp100_baseline_thresholdu2:=high]
+    mem_results_db[, rp100_baseline_thresholdu3:=very_high]
 
     mem_limits_schema$db_upsert_load_data_infile(mem_results_db)
 
@@ -51,22 +51,23 @@ run_mem <- function(input_data, conf, mem_schema, mem_limits_schema, source) {
 
     data[, age := age_group]
     data[, tag := conf$tag]
-    data[, rate := n / denominator * conf$multiplicative_factor]
+    data[, rp100 := n / denominator * conf$multiplicative_factor]
     data[fhidata::days, on = "yrwk", date := mon]
 
-    data[, rate_status := as.character(NA)]
-    data[rate < low, rate_status := "verylow"]
-    data[rate >= low & rate < medium, rate_status := "low"]
-    data[rate >= medium & rate < high, rate_status := "medium"]
-    data[rate >= high & rate < very_high, rate_status := "high"]
-    data[rate >= very_high, rate_status := "veryhigh"]
+    data[, rp100_status := as.character(NA)]
+    data[rp100 < low, rp100_status := "verylow"]
+    data[rp100 >= low & rp100 < medium, rp100_status := "low"]
+    data[rp100 >= medium & rp100 < high, rp100_status := "medium"]
+    data[rp100 >= high & rp100 < very_high, rp100_status := "high"]
+    data[rp100 >= very_high, rp100_status := "veryhigh"]
     data[, granularity_time:="week"]
-    data[, rate_threshold_0:=low]
-    data[, rate_threshold_1:=medium]
-    data[, rate_threshold_2:=high]
-    data[, rate_threshold_3:=very_high]
+    data[, rp100_baseline_thresholdu0:=low]
+    data[, rp100_baseline_thresholdu1:=medium]
+    data[, rp100_baseline_thresholdu2:=high]
+    data[, rp100_baseline_thresholdu3:=very_high]
     data[, source:=source]
     data[, x := fhi::x(week)]
+    data[, n_denominator:=denominator]
    # print(head(data, 40))
     mem_schema$db_upsert_load_data_infile(data)
   }
@@ -77,8 +78,8 @@ run_mem <- function(input_data, conf, mem_schema, mem_limits_schema, source) {
 prepare_data_frame <- function(data, mult_factor = 100) {
   useful_data <- data[week %in% c(1:20, 40:52)]
   useful_data[, x := fhi::x(week)]
-  useful_data[, rate := n / denominator * mult_factor]
-  out <- dcast.data.table(useful_data, x ~ season, value.var = "rate")
+  useful_data[, rp100 := n / denominator * mult_factor]
+  out <- dcast.data.table(useful_data, x ~ season, value.var = "rp100")
   out[, x := NULL]
   out <- data.frame(out)
   names(out) <- stringr::str_replace_all(names(out), "\\.", "/")

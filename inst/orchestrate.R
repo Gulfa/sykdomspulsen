@@ -1,5 +1,3 @@
 devtools::load_all()
 
-for(task in names(config$tasks)){
-  run_task(task, log=TRUE)
-}
+config$tasks$run_all(args[1], log=FALSE)

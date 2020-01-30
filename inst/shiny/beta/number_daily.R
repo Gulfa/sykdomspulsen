@@ -40,14 +40,15 @@ number_dailyServer <- function(input, output, session, GLOBAL) {
     x_age <- input$dailyAge
 
     retData <- pool %>%
-      tbl("spuls_standard_results") %>%
+      tbl("results_qp") %>%
       filter(
         date >= start_date &
-        tag == x_tag &
+          tag_outcome == x_tag &
+          source == "data_norsyss" & 
         location_code == x_location &
         granularity_time == "weekly" &
         age == x_age) %>%
-      select(date, n, threshold2, threshold4, status) %>%
+      select(date, n, n_baseline_thresholdu0, n_baseline_thresholdu1, n_status) %>%
       collect()
     setDT(retData)
     retData <- retData[retData$date >= GLOBAL$dateMinRestrictedRecent,]
@@ -65,18 +66,19 @@ number_dailyServer <- function(input, output, session, GLOBAL) {
     x_age <- input$dailyAge
 
     retData <- pool %>%
-      tbl("spuls_standard_results") %>%
+      tbl("results_qp") %>%
       filter(
         date >= start_date &
-        tag == x_tag &
-        location_code == x_location &
-        granularity_time == "daily" &
-        age == x_age) %>%
-      select(date, n, threshold2, threshold4, status) %>%
+          tag_outcome == x_tag &
+          source == "data_norsyss" & 
+          location_code == x_location &
+          granularity_time == "daily" &
+          age == x_age) %>%
+      select(date, n, n_baseline_thresholdu0, n_baseline_thresholdu1, n_status) %>%
       collect()
     setDT(retData)
-
-    retData$top <- max(c(retData$n, retData$threshold4), na.rm = T) + 2
+    
+    retData$top <- max(c(retData$n, retData$n_baseline_thresholdu1), na.rm = T) + 2
     retData$bottom <- 0
 
     return(retData)
@@ -85,7 +87,7 @@ number_dailyServer <- function(input, output, session, GLOBAL) {
   output$dailyNumberPlotBrush <- renderCachedPlot({
     pd <- dailyPlotBrushData()
 
-    fhiplot::make_line_brush_plot(pd,x="date",dataVal="n",L2="threshold2",L3="threshold4", GetCols=GetCols)
+    fhiplot::make_line_brush_plot(pd,x="date",dataVal="n",L2="n_baseline_thresholdu0",L3="n_baseline_thresholdu1", GetCols=GetCols)
   }, cacheKeyExpr={list(
     input$dailyType,
     input$dailyCounty,
@@ -101,11 +103,11 @@ number_dailyServer <- function(input, output, session, GLOBAL) {
     }
 
     t1 <- names(GLOBAL$dailyTypes)[GLOBAL$dailyTypes==input$dailyType]
-    t2 <- Getlocation_name(input$dailyCounty)
+    t2 <- sykdomspulsen::get_location_name(input$dailyCounty)
 
     title <- paste0(t1, " i ",t2, " (",input$dailyAge," alder)\n")
 
-    fhiplot::make_line_threshold_plot(pd,x="date",dataVal="n",L1="bottom",L2="threshold2",L3="threshold4",L4="top",allPoints=FALSE,title=title,xShift=0.5, step=F, GetCols=GetCols, legend_position = "bottom")
+    fhiplot::make_line_threshold_plot(pd,x="date",dataVal="n",L1="bottom",L2="n_baseline_thresholdu0",L3="n_baseline_thresholdu1",L4="top",allPoints=FALSE,title=title,xShift=0.5, step=F, GetCols=GetCols, legend_position = "bottom")
   }, cacheKeyExpr={list(
     input$dailyType,
     input$dailyCounty,

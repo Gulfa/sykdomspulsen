@@ -152,6 +152,13 @@ TaskManager <- R6::R6Class(
     ## },
 
 
+    run_all = function(log = TRUE){
+      for(task in list_task){
+        task_run(task$name, log=log)
+
+      }
+
+    },   
     task_run = function(name, log = TRUE) {
       list_task[[name]]$run(log)
     },
