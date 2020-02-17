@@ -293,8 +293,8 @@ set_tasks <- function() {
         action="ui_external_api",
         args = list(
           tags = c("gastro"),
-          short = unlist(config$def$short_names[c("gastro")]),
-          long =  unlist(config$def$long_names[c("gastro")]),
+          short = config$def$short_names[[c("gastro")]],
+          long =  config$def$long_names[[c("gastro")]],
           age = config$def$age$norsyss
         )
       )

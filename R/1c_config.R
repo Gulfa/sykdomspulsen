@@ -9,7 +9,7 @@ set_config <- function() {
   set_dev_options()
   set_border()
   set_db()
-  set_tasks()
+ 
 
   config$def <- list(
     smallMunicips = c(
@@ -36,7 +36,7 @@ set_config <- function() {
       gastro="Mage-tarm"
     )
   )
-
+  set_tasks()
   # if(!foreach::getDoParRegistered()){
   #   future::plan(future::sequential)
   #   foreach::registerDoSEQ()

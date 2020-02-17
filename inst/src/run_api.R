@@ -2,11 +2,11 @@ if (.Platform$OS.type == "unix") {
   if (Sys.getenv("RSTUDIO") == "1") {
     HOME <- "/git/sykdomspulsen/inst/src"
     PLUMB <- "plumb"
-    DATA <- "/output/externalapi/"
+    DATA <- "/output/externalapi"
   } else {
-    HOME <- "/r/sykdomspulsen/src"
+    HOME <- "/sykdomspulsen/sykdomspulsen/inst/src"
     PLUMB <- "plumb"
-    DATA <- "/results/externalapi/"
+    DATA <- "/output/externalapi"
   }
 } else {
   HOME <- "C:/Sykdomspulsen"
@@ -24,13 +24,19 @@ SubstrRight.int <- function(x, n) {
 }
 SubstrRight <- Vectorize(SubstrRight.int)
 
+
+
+l <- list.files(DATA, include.dirs=TRUE)
+largest_date <- max(l[grep("202",l)])
+
+DATA <- fs::path(DATA, largest_date)
+
 if (!file.exists(file.path(DATA, "log"))) dir.create(file.path(DATA, "log"))
 
 CONFIG <- readRDS(file.path(DATA, "config.RDS"))
 types <- CONFIG$SYNDROMES[CONFIG$SYNDROMES %in% CONFIG$SYNDROMES_ALERT_EXTERNAL]
 typesShort <- CONFIG$SYNDROMES_SHORT[CONFIG$SYNDROMES_SHORT %in% CONFIG$SYNDROMES_ALERT_EXTERNAL]
 ages <- CONFIG$AGES
-
 dr <- readRDS(file.path(DATA, "resRecentLine.RDS"))
 dateMax <- max(dr$date)
 dateMin <- as.character(as.Date(dateMax) - 365)
@@ -45,7 +51,6 @@ dk <- dk[type %in% types]
 # dr[,age:=gsub("\\+","p",age)]
 # d[,age:=gsub("\\+","p",age)]
 # dk[,age:=gsub("\\+","p",age)]
-
 dr[, xRaw := 1:.N, by = .(type, location, age)]
 d[, xRaw := 1:.N, by = .(type, location, age)]
 dk[, xRaw := 1:.N, by = .(type, location, age)]
@@ -145,6 +150,7 @@ dStack <- unique(d[, c("type", "location", "age"), with = F])
 dkStack <- unique(dk[, c("type", "location", "age", "county"), with = F])
 
 outbreaks <- readRDS(file.path(DATA, "outbreaks.RDS"))
+
 for (i in c("df", "dk")) {
   outbreaks[[i]] <- outbreaks[[i]][type %in% types & !is.na(sumCum)]
   outbreaks[[i]][, numeric := as.numeric(meanZScore)]

@@ -268,7 +268,6 @@ GenerateOutbreakListAPI <- function(df,
 ConvertConfigForAPI <- function(argset) {
   CONFIG_NEW <- new.env(parent = emptyenv())
   CONFIG_NEW$AGES <- argset$ages
-
   CONFIG_NEW$SYNDROMES <- argset$tags
   names(CONFIG_NEW$SYNDROMES) <- argset$long
   CONFIG_NEW$SYNDROMES_SHORT <- argset$tags
@@ -279,10 +278,8 @@ ConvertConfigForAPI <- function(argset) {
   ## CONFIG_NEW$SYNDROMES_ALERT_INTERNAL <- CONFIG$SYNDROMES[alertInternal == TRUE]$tag
   ## names(CONFIG_NEW$SYNDROMES_ALERT_INTERNAL) <- CONFIG$SYNDROMES[alertInternal == TRUE]$namesLong
 
-  ## CONFIG_NEW$SYNDROMES_ALERT_EXTERNAL <- CONFIG$SYNDROMES[alertExternal == TRUE]$tag
-  ## names(CONFIG_NEW$SYNDROMES_ALERT_EXTERNAL) <- CONFIG$SYNDROMES[alertExternal == TRUE]$namesLong
-
-
+  CONFIG_NEW$SYNDROMES_ALERT_EXTERNAL <- argset$tags
+  names(CONFIG_NEW$SYNDROMES_ALERT_EXTERNAL) <- argset$long
   return(CONFIG_NEW)
 }
 
@@ -307,7 +304,7 @@ fix_columns <- function(d){
   d[, threshold6:=n_baseline_thresholdu2]
   d[, status:=n_status]
   d[, zscore:=n_zscore]
-  d[, cumE1:=n - threshold0]
+  d[, cumE1:=n - threshold2]
 
 
 }
