@@ -11,7 +11,7 @@ set_tasks <- function() {
         action = "data_pre_norsyss",
         schema = list(),
         args = list(
-          date_from = "2019-01-01"
+          date_from = "2017-01-01"
         )
       )
     )
@@ -46,7 +46,8 @@ set_tasks <- function() {
         schema = list(output = config$schema$data_msis),
         args = list(
           start_year = 2008,
-          end_year = 2019
+          end_year = 2019,
+          tags = c("Kikoste", "Campylobacteriose")
         )
       )
     )
@@ -203,7 +204,7 @@ set_tasks <- function() {
   config$tasks$add_task(
     task_from_config(
       list(
-        name = "analysis_analysis_msis",
+        name = "analysis_simple_msis",
         type = "analysis",
         db_table = "data_msis",
         action = "analysis_simple",

@@ -39,6 +39,7 @@ task_from_config <- function(conf) {
       type = conf$type,
       plans = list(plan),
       schema = schema,
+      dependencies = get_list(conf, "dependencies", c()),
       cores = cores,
       chunk_size = chunk_size
 
@@ -49,6 +50,7 @@ task_from_config <- function(conf) {
       type = conf$type,
       plans = plans,
       schema = schema,
+      dependencies = get_list(conf, "dependencies", c()),
       cores = cores,
       chunk_size = chunk_size
 
@@ -125,17 +127,19 @@ Task <- R6::R6Class(
     type = NULL,
     plans = list(),
     schema = list(),
+    dependencies = list(),
     cores = 1,
     chunk_size = 100,
     name = NULL,
     update_plans_fn = NULL,
-    initialize = function(name, type, plans=NULL, update_plans_fn=NULL, schema, cores = 1, chunk_size = 100) {
+    initialize = function(name, type, plans=NULL, update_plans_fn=NULL, schema, dependencies = c(), cores = 1, chunk_size = 100) {
       self$name <- name
       self$type <- type
       self$plans <- plans
       self$update_plans_fn <- update_plans_fn
       self$schema <- schema
       self$cores <- cores
+      self$dependencies <- dependencies
       self$chunk_size <- chunk_size
     },
     update_plans = function() {
@@ -247,9 +251,7 @@ Task <- R6::R6Class(
 
         if (log) {
           update_rundate(
-            package = self$name,
-            date_results = lubridate::today(),
-            date_extraction = lubridate::today(),
+            task = self$name,
             date_run = lubridate::today()
           )
         }
@@ -258,6 +260,28 @@ Task <- R6::R6Class(
       }
     },
     can_run = function() {
+      rundates <- get_rundate(task=self$name)
+      if(nrow(rundates) > 0){
+        last_run_date <- max(rundates$date_run)
+      } else{
+        last_run_date <- as.Date("2000-01-01")
+      }
+      curr_date <- lubridate::today()
+      dependencies <- c()
+      if(curr_date <= last_run_date){
+        return(FALSE)
+      }
+      
+      for(dependency in self$dependencies){
+        dep_run_date <- get_rundate(task=dependency)
+        if(nrow(dep_run_date) == 0){
+          return(FALSE)
+        }else if(last_run_date >= max(dep_run_date$date_run)){
+            return(FALSE)
+        }
+      }
+
+
       return(TRUE)
     }
   )

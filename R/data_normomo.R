@@ -24,7 +24,8 @@ data_normomo_internal <- function(){
     yyyy = stringr::str_sub(date_extracted, 1, 4),
     mm = stringr::str_sub(date_extracted, 5, 6),
     dd = stringr::str_sub(date_extracted, 7, 8)
-    )
+  )
+
   date_extracted <- as.Date(date_extracted)
   d <- data.table::fread(file)
 

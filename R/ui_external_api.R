@@ -28,8 +28,8 @@ ui_external_api <- function(data, argset, schema) {
     "threshold6",
     "zscore",
     "cumE1",
-    "cumL1",
-    "cumU1",
+    ## "cumL1",
+    ## "cumU1",
     "failed",
     "file",
     "locationName",
@@ -110,7 +110,6 @@ ui_external_api <- function(data, argset, schema) {
   outbreaks <- GenerateOutbreakListAPI(
     df = df,
     dk = dk,
-    saveFiles = NULL,
     useType = TRUE
   )
   saveRDS(outbreaks, path("output", "externalapi", argset$today, "outbreaks.RDS"), version = 2)
@@ -124,11 +123,8 @@ ui_external_api <- function(data, argset, schema) {
 #' @param useType Use type or tag as variable name
 #' @import data.table
 #' @export
-GenerateOutbreakListAPI <- function(df = readRDS(fd::path("results", sprintf("%s/resYearLine.RDS", LatestRawID()))),
-                                    dk = readRDS(fd::path("results", sprintf("%s/resYearLineMunicip.RDS", LatestRawID()))),
-                                    saveFiles = c(
-                                      fd::path("results", sprintf("%s/outbreaks.RDS", LatestRawID()))
-                                    ),
+GenerateOutbreakListAPI <- function(df,
+                                    dk,
                                     useType = FALSE) {
   # variables used in data.table functions in this function
   . <- NULL
@@ -262,10 +258,6 @@ GenerateOutbreakListAPI <- function(df = readRDS(fd::path("results", sprintf("%s
   }
 
   outbreaks <- list(df = df, dk = dk)
-  if (!is.null(saveFiles)) {
-    SaveRDS(outbreaks, saveFiles)
-  }
-
   return(outbreaks)
 }
 
@@ -309,12 +301,13 @@ fix_columns <- function(d){
 
 
   d[, denominator:=n_denominator]
-  d[, threshold0:=n_expected]
-  d[, threshold2:=n_thresholdu0]
-  d[, threshold4:=n_thresholdu1]
-  d[, threshold6:=n_thresholdu2]
+  d[, threshold0:=n_baseline_expected]
+  d[, threshold2:=n_baseline_thresholdu0]
+  d[, threshold4:=n_baseline_thresholdu1]
+  d[, threshold6:=n_baseline_thresholdu2]
   d[, status:=n_status]
   d[, zscore:=n_zscore]
+  d[, cumE1:=n - threshold0]
 
 
 }

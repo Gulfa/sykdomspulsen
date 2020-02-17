@@ -10,6 +10,20 @@ set_db <- function(){
 
   # set schema
   config$schema <- list(
+    rundate = schema$new(
+      db_config = config$db_config,
+      db_table = "rundate",
+      db_field_types = c(
+        "task" = "TEXT",
+        "date_run" = "DATE"
+      ),
+      db_load_folder = "/xtmp/",
+      keys = c(
+        "task",
+        "date_run"),
+      check_fields_match = TRUE
+    ),   
+    
     datar_normomo = schema$new(
       db_config = config$db_config,
       db_table = "datar_normomo",
@@ -161,8 +175,8 @@ set_db <- function(){
         "age"
       )
     ),
-    reuslts_simple = schema$new(
-      db_table = "reuslts_simple",
+    results_simple = schema$new(
+      db_table = "results_simple",
       db_config = config$db_config,
       db_field_types =  c(
         "tag_outcome" = "TEXT",
@@ -283,8 +297,6 @@ set_db <- function(){
       keys = c("season", "tag_outcome", "age", "location_code")
     )
   )
-
-  for(i in config$schema){
-    #i$db_connect()
-  }
+  config$schema$rundate$db_connect()
 }
+

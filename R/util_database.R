@@ -182,11 +182,10 @@ load_data_infile.default <- function(conn = NULL, db_config = NULL, table, dt = 
     "-f",
     format_file
   )
-  processx::run(
+  system2(
     "bcp",
-    args,
-    echo_cmd = F,
-    echo = F
+    args=args,
+    stdout=NULL
   )
 
   b <- Sys.time()
@@ -316,7 +315,7 @@ upsert_load_data_infile_internal.default <- function(
   # keys <- schema$output$keys
   # drop_indexes <- NULL
 
-  temp_name <- paste0("##",random_uuid())
+  temp_name <- paste0("tmp",random_uuid())
 
   # ensure that the table is removed **FIRST** (before deleting the connection)
   on.exit(DBI::dbRemoveTable(conn, temp_name), add = TRUE, after = FALSE)

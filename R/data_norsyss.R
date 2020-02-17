@@ -377,10 +377,12 @@ data_norsyss <- function(data, argset, schema){
     return(FALSE)
   }
 
-  fd::msg(sprintf("Cleaning file %s", files$raw))
+  final_file = files$raw[order(files$raw, decreasing=T)][1]
+
+  fd::msg(sprintf("Cleaning file %s", final_file))
   #EmailNotificationOfNewData(files$id)
 
-  d <- fread(path("input", "norsyss", files$raw))
+  d <- fread(path("input", "norsyss", final_file))
   setnames(d,"date","x_date")
   dates <- unique(d[,"x_date"])
   dates[,date:=data.table::as.IDate(x_date)]

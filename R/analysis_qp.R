@@ -11,7 +11,6 @@ analysis_qp <- function(data, argset, schema){
 
   # arguments start
   data <- copy(data$data)
- # print(data)
 
   data[, denominator:=get(argset$denominator)]
   argset$granularity_geo <- data[1, granularity_geo]
@@ -50,7 +49,6 @@ analysis_qp <- function(data, argset, schema){
       weeklyDenominatorFunction = argset$weeklyDenominatorFunction
     )
     diagnostics <- update_diagnostics(attr(ret, "diagnostics"),argset)
-
     ret <- clean_post_analysis(ret, argset)
     schema$output$db_upsert_load_data_infile(ret, verbose=F)
     #schema$output$db_load_data_infile(ret, verbose=F)
@@ -257,8 +255,8 @@ QuasipoissonTrainPredictData <- function(
   } else {
     # REFIT THE REGRESSION USING RESIDUAL WEIGHTS (TO DOWNWEIGHT PREVIOUS OUTBREAKS):
     datasetTrain[, w_i := 1]
-
     for (i in sort(1:reweights)) {
+
       dispersion_parameter <- summary(poisreg$fit)$dispersion
       if (i == 0) {
         break
@@ -277,13 +275,23 @@ QuasipoissonTrainPredictData <- function(
     }
     # CALCULATE SIGNAL THRESHOLD (prediction interval from Farrington 1996):
     pred <- predict(poisreg$fit, type = "response", se.fit = T, newdata = datasetPredict)
-    datasetPredict[, n_baseline_expected := pred$fit]
-    datasetPredict[, n_baseline_thresholdu0 := FarringtonThreshold(pred, phi = dispersion_parameter, z = 2, skewness.transform = "2/3")]
-    datasetPredict[, n_baseline_thresholdu1 := FarringtonThreshold(pred, phi = dispersion_parameter, z = 4, skewness.transform = "2/3")]
-    datasetPredict[, n_baseline_thresholdu2 := FarringtonThreshold(pred, phi = dispersion_parameter, z = 6, skewness.transform = "2/3")]
-    datasetPredict[, n_zscore := FarringtonZscore(pred, phi = dispersion_parameter, z = 6, skewness.transform = "2/3", y = n)]
-
-    datasetPredict[, stderr := FarringtonSEinGammaSpace(pred, phi = dispersion_parameter, z = 6, skewness.transform = "2/3")]
+    if(max(pred$fit) > 1e10){
+      datasetPredict[, n_baseline_expected := 0.0]
+      datasetPredict[, n_baseline_thresholdu0 := 5.0]
+      datasetPredict[, n_baseline_thresholdu1 := 10.0]
+      datasetPredict[, n_baseline_thresholdu2 := 15.0]
+      datasetPredict[, n_zscore := 0.0]
+      datasetPredict[, failed := TRUE]
+      regression_diagnostics$failed <- 1
+    } else{
+      datasetPredict[, n_baseline_expected := pred$fit]
+      datasetPredict[, n_baseline_thresholdu0 := FarringtonThreshold(pred, phi = dispersion_parameter, z = 2, skewness.transform = "2/3")]
+      datasetPredict[, n_baseline_thresholdu1 := FarringtonThreshold(pred, phi = dispersion_parameter, z = 4, skewness.transform = "2/3")]
+      datasetPredict[, n_baseline_thresholdu2 := FarringtonThreshold(pred, phi = dispersion_parameter, z = 6, skewness.transform = "2/3")]
+      datasetPredict[, n_zscore := FarringtonZscore(pred, phi = dispersion_parameter, z = 6, skewness.transform = "2/3", y = n)]
+      datasetPredict[, stderr := FarringtonSEinGammaSpace(pred, phi = dispersion_parameter, z = 6, skewness.transform = "2/3")]
+      datasetPredict[, failed := FALSE]
+    }
     ## datasetPredict[, cumE1 := n^(2 / 3) - n_baseline_expected^(2 / 3)]
     ## datasetPredict[, cumL1 := (cumE1 - 2 * stderr)^(3 / 2)]
     ## datasetPredict[, cumU1 := (cumE1 + 2 * stderr)^(3 / 2)]
@@ -301,7 +309,7 @@ QuasipoissonTrainPredictData <- function(
     ## datasetPredict[, revcumL1 := NULL]
     ## datasetPredict[, revcumU1 := NULL]
     ## datasetPredict[, stderr := NULL]
-    datasetPredict[, failed := FALSE]
+
   }
 
   datasetPredict <- AddXToWeekly(datasetPredict)
@@ -465,4 +473,13 @@ clean_post_analysis <- function(res, argset) {
   res[location_code %in% config$smallMunicips & age != "Totalt", threshold4 := 10 ]
 
   return(res)
+}
+anscombe.residuals <- function(m, phi) {
+  y <- m$y
+  mu <- fitted.values(m)
+  # Compute raw Anscombe residuals
+  a <- 3 / 2 * (y^(2 / 3) * mu^(-1 / 6) - mu^(1 / 2))
+  # Compute standardized residuals
+  a <- a / sqrt(phi * (1 - hatvalues(m)))
+  return(a)
 }

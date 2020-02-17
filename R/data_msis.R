@@ -139,7 +139,6 @@ clean_data <- function(data){
 #' @export
 data_msis <- function(data, argset, schema){
   # arguments start
-  print(argset)
   start_year <- argset$start_year
   end_year <- argset$end_year
   # arguments end
@@ -159,26 +158,24 @@ data_msis <- function(data, argset, schema){
   cleaned_data <- clean_data(data)
   with_loc <- cleaned_data[fd::norway_locations()[, .(location_code=municip_code, municip_name)], on=c("municip"="municip_name")]
   with_loc[, tag_outcome :=Sykdom]
+  with_loc <- with_loc[tag_outcome %in% argset$tags]
+  
   with_loc <- with_loc[!is.na(tag_outcome),]
   with_loc[, granularity_time:="month"]
   with_loc[, granularity_geo:="municip"]
   with_loc[, border:=fd::config$border]
   with_loc[, age:="Totalt"]
   with_loc[, sex:="Totalt"]
-  with_loc[, year:=lubridate::year(date)]
-  out_data <- with_loc[, .(tag_outcome,
-                           location_code,
-                           granularity_time,
-                           granularity_geo,
-                           border,
-                           month,
-                           year,
-                           age,
-                           sex,
-                           date,
-                           n)]
+
+  dates <- unique(with_loc[, "date", with = F])
+  dates[, datex := date]
+  dates[, yrwk := format.Date(datex, "%G-%V")] # Week-based year, instead of normal year (%Y)
+  dates[, week := as.numeric(format.Date(datex, "%V"))]
+  dates[, season := fhi::season(yrwk)]
+  dates[, x := fhi::x(week)]
+  with_loc <- merge(with_loc, dates, by = "date")
   schema$output$db_drop_all_rows()
-  schema$output$db_load_data_infile(out_data)
+  schema$output$db_load_data_infile(with_loc)
 }
 
 

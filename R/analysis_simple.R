@@ -4,7 +4,6 @@
 #'
 #' @export
 analysis_simple <- function(data, argset, schema){
-  print(argset)
   # arguments start
   group_by <- argset$group_by
   past_years <-argset$past_years
