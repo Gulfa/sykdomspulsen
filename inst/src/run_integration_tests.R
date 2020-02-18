@@ -27,7 +27,7 @@ devtools::load_all()
 conn <- get_db_connection(db_config=config$db_config)
 DBI::dbExecute(conn, "delete from rundate")
 
-output <- processx::run("Rscript", "/r/sykdomspuls/src/orchestrate.R", error_on_status = F, echo = T)
+output <- processx::run("Rscript", "/sykdomspulsen/inst/src/orchestrate.R", error_on_status = F, echo = T)
 cat("\n\nstdout\n\n")
 cat(output$stdout)
 cat("\n\nstderr\n\n")
@@ -42,7 +42,7 @@ if (output$status == 0) {
 }
 
 ## Run API
-process <- processx::process$new("Rscript", "/r/sykdomspuls/src/run_api.R")
+process <- processx::process$new("Rscript", "/sykdomspulsen/inst/src/run_api.R")
 if (process$is_alive()) {
   cat("\n**PASS 2**\n")
   a$add_result("sykdomspuls", "API_0min", testthat::expectation("success", "Pass"))
