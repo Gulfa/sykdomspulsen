@@ -68,6 +68,30 @@ set_db <- function(){
         "date"
       )
     ),
+    data_veterinary = schema$new(
+      db_config = config$db_config,
+      db_table = "data_veterinary",
+      db_field_types =  c(
+        "granularity_time" = "TEXT",
+        "granularity_geo" = "TEXT",
+        "location_code" = "TEXT",
+        "season" = "TEXT",
+        "year" = "INTEGER",
+        "week" = "INTEGER",
+        "yrwk" = "TEXT",
+        "x" = "DOUBLE",
+        "date" = "DATE",
+        "tag" = "TEXT",
+        "positive" = "INTEGER",
+        "N" = "INTEGER",
+        "border" = "INTEGER"
+      ),
+      db_load_folder = "/xtmp/",
+      keys =  c(
+        "location_code",
+        "date"
+      )
+    ),
       
     results_normomo_standard = schema$new(
       db_config = config$db_config,
@@ -266,6 +290,41 @@ set_db <- function(){
         "n_zscore" = "DOUBLE",
         "n_status" = "TEXT",
         "failed" = "TINYINT",
+        "source" = "TEXT"
+      ),
+      db_load_folder = "/xtmp/",
+      keys =  c(
+        "granularity_time",
+        "granularity_geo",
+        "tag_outcome",
+        "location_code",
+        "age",
+        "year",
+        "week",
+        "date"
+      )
+    ),
+    results_pred_oh = schema$new(
+      db_table = "results_pred_oh",
+      db_config = config$db_config,
+      db_field_types =  c(
+        "granularity_time" = "TEXT",
+        "granularity_geo" = "TEXT",
+        "tag_outcome" = "TEXT",
+        "location_code" = "TEXT",
+        "age" = "TEXT",
+        "sex" = "TEXT",
+        "yrwk" = "TEXT",
+        "year" = "DOUBLE",
+        "week" = "DOUBLE",
+        "season" = "TEXT",
+        "x" = "DOUBLE",
+        "date" = "DATE",
+        "p_thresholdu0" = "DOUBLE",
+        "p_thresholdu1" = "DOUBLE",
+        "n_est" = "DOUBLE",
+        "n_est_std" = "DOUBLE",
+        "n_denominator_est" = "DOUBLE",
         "source" = "TEXT"
       ),
       db_load_folder = "/xtmp/",

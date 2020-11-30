@@ -52,6 +52,17 @@ set_tasks <- function() {
       )
     )
   )
+  config$tasks$add_task(
+    task_from_config(
+      list(
+        name = "data_veterinary",
+        type = "data",
+        action = "data_veterinary",
+        schema = list(output = config$schema$data_veterinary),
+        args = list()
+      )
+    )
+  )
 
   config$tasks$add_task(
     task_from_config(
@@ -214,6 +225,28 @@ set_tasks <- function() {
         args = list(
           group_by = "month",
           past_years = 5
+        )
+      )
+    )
+  )
+  config$tasks$add_task(
+    task_from_config(
+      list(
+        name = "analysis_pred_oh",
+        type = "data",
+        db_table = "",
+        action = "analysis_pred_oh",
+        dependencies = c("data_veterinary"),
+        schema = list(input_human = config$schema$data_norsyss,
+                      input_animal = config$schema$data_veterinary,
+                      input_weather = config$schema$data_weather,
+                      output = config$schema$results_pred_oh
+                      ),
+        args = list(
+          animal_tag="campylobacter",
+          human_tag="gastro",
+          weeklyDenominatorFunction = "sum",
+          denominator = "consult_without_influenza"
         )
       )
     )
